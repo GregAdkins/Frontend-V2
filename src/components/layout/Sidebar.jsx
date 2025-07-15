@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Home, Compass, Plus, Eye, BarChart3, TrendingUp } from 'lucide-react';
 import NavItem from '../navigation/NavItem';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const [activeItem, setActiveItem] = useState('home');
   
   const menuItems = [
@@ -15,26 +15,49 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-screen sticky top-0">
-      {/* Logo */}
-      <div className="p-6 border-b border-gray-100">
-        <h1 className="text-2xl font-bold text-blue-600">5th Social</h1>
-      </div>
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
       
-      {/* Menu Items */}
-      <nav className="mt-6">
-        {menuItems.map((item) => (
-          <NavItem
-            key={item.id}
-            icon={item.icon}
-            label={item.label}
-            isActive={activeItem === item.id}
-            onClick={() => setActiveItem(item.id)}
-          />
-        ))}
-      </nav>
-    </div>
+      {/* Sidebar */}
+      <div className={`
+        fixed lg:relative lg:translate-x-0 z-50 lg:z-auto
+        w-64 lg:w-64 xl:w-72 bg-white border-r border-gray-200 h-screen
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        {/* Logo */}
+        <div className="p-4 lg:p-6 border-b border-gray-100 flex items-center justify-between">
+          <h1 className="text-xl lg:text-2xl font-bold text-blue-600">5th Social</h1>
+          <button 
+            onClick={onClose}
+            className="lg:hidden text-gray-400 hover:text-gray-600"
+          >
+            <div className="w-6 h-6" />
+          </button>
+        </div>
+        
+        {/* Menu Items */}
+        <nav className="mt-6">
+          {menuItems.map((item) => (
+            <NavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              isActive={activeItem === item.id}
+              onClick={() => setActiveItem(item.id)}
+            />
+          ))}
+        </nav>
+      </div>
+    </>
   );
 };
+
 
 export default Sidebar;

@@ -8,7 +8,7 @@ const UserAvatar = ({ user, size = 'md' }) => {
   };
   
   return (
-    <div className={`${sizeClasses[size]} bg-gradient-to-r from-orange-400 to-pink-400 rounded-full flex items-center justify-center`}>
+    <div className={`${sizeClasses[size]} bg-gradient-to-r from-orange-400 to-pink-400 rounded-full flex items-center justify-center flex-shrink-0`}>
       <span className="text-white font-bold">
         {user.name.split(' ').map(n => n[0]).join('')}
       </span>
