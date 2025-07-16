@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Compass, Plus, Eye, BarChart3, TrendingUp } from 'lucide-react';
 import NavItem from '../navigation/NavItem';
 
-const Sidebar = ({ isOpen, onClose, onCreatePost }) => {
-  const [activeItem, setActiveItem] = useState('home');
+const Sidebar = ({ isOpen, onClose }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   
   const menuItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'discover', label: 'Discover', icon: Compass },
-    { id: 'create', label: 'Create', icon: Plus },
-    { id: 'explore', label: 'Explore & Art', icon: Eye },
-    { id: 'data', label: 'Data Environment', icon: BarChart3 },
-    { id: 'trending', label: 'Trending', icon: TrendingUp },
+    { id: 'home', label: 'Home', icon: Home, path: '/' },
+    { id: 'discover', label: 'Discover', icon: Compass, path: '/discover' },
+    { id: 'create', label: 'Create', icon: Plus, path: '/create' },
+    { id: 'explore', label: 'Explore & Art', icon: Eye, path: '/explore' },
+    { id: 'data', label: 'Data Environment', icon: BarChart3, path: '/data' },
+    { id: 'trending', label: 'Trending', icon: TrendingUp, path: '/trending' },
   ];
+
+  const handleItemClick = (item) => {
+    navigate(item.path);
+    onClose(); // Close sidebar on mobile after navigation
+  };
+
+  const getActiveItem = () => {
+    const currentPath = location.pathname;
+    return menuItems.find(item => item.path === currentPath)?.id || 'home';
+  };
 
   return (
     <>
@@ -49,8 +61,8 @@ const Sidebar = ({ isOpen, onClose, onCreatePost }) => {
               key={item.id}
               icon={item.icon}
               label={item.label}
-              isActive={activeItem === item.id}
-              onClick={() => setActiveItem(item.id)}
+              isActive={getActiveItem() === item.id}
+              onClick={() => handleItemClick(item)}
             />
           ))}
         </nav>

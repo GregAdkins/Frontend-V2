@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Image, X, Upload, Type, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Image, Upload, Type, FileText, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { postsAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
-const CreatePost = ({ isOpen, onClose, onPostCreated }) => {
+const CreatePost = () => {
   const [postData, setPostData] = useState({
     title: '',
     content: '',
@@ -10,9 +13,11 @@ const CreatePost = ({ isOpen, onClose, onPostCreated }) => {
   
   const [dragActive, setDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Don't render if modal is not open
-  if (!isOpen) return null;
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -20,10 +25,26 @@ const CreatePost = ({ isOpen, onClose, onPostCreated }) => {
       ...prev,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
   const handleImageUpload = (files) => {
-    const newImages = Array.from(files).slice(0, 5 - postData.images.length).map(file => ({
+    const validFiles = Array.from(files).filter(file => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select only image files');
+        return false;
+      }
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size must be less than 10MB');
+        return false;
+      }
+      return true;
+    });
+
+    const newImages = validFiles.slice(0, 5 - postData.images.length).map(file => ({
       id: Date.now() + Math.random(),
       file,
       url: URL.createObjectURL(file),
@@ -72,65 +93,105 @@ const CreatePost = ({ isOpen, onClose, onPostCreated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('title', postData.title.trim());
+      formData.append('content', postData.content.trim());
       
-      const newPost = {
-        id: Date.now(),
-        user: {
-          name: 'You',
-          verified: false
-        },
-        timestamp: 'now',
-        content: postData.content,
-        media: postData.images.length > 0 ? {
-          src: postData.images[0].url,
-          alt: postData.title || 'User uploaded image'
-        } : null,
-        caption: postData.title ? {
-          title: postData.title,
-          subtitle: 'Your Post'
-        } : null,
-        likes: 0,
-        comments: 0,
-        shares: 0
-      };
-      
-      if (onPostCreated) {
-        onPostCreated(newPost);
+      // Add image if selected (Django expects single 'image' field)
+      if (postData.images && postData.images.length > 0) {
+        formData.append('image', postData.images[0].file);
       }
       
-      // Reset form
-      setPostData({ title: '', content: '', images: [] });
+      // Debug: Log what we're sending
+      console.log('Sending post data:');
+      console.log('Title:', postData.title.trim());
+      console.log('Content:', postData.content.trim());
+      console.log('Image file:', postData.images[0]?.file);
       
-      if (onClose) {
-        onClose();
-      }
+      const result = await postsAPI.createPost(formData);
+      console.log('Post created successfully:', result);
+      
+      setSuccess(true);
+      
+      // Reset form after successful submission
+      setTimeout(() => {
+        setPostData({ title: '', content: '', images: [] });
+        setSuccess(false);
+        navigate('/', { replace: true });
+      }, 2000);
       
     } catch (error) {
       console.error('Error creating post:', error);
+      
+      let errorMessage = 'Failed to create post. Please try again.';
+      if (error.response?.data?.title) {
+        errorMessage = error.response.data.title[0];
+      } else if (error.response?.data?.content) {
+        errorMessage = error.response.data.content[0];
+      } else if (error.response?.data?.image) {
+        errorMessage = error.response.data.image[0];
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.non_field_errors) {
+        errorMessage = error.response.data.non_field_errors[0];
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleCancel = () => {
+    // Clean up image URLs to prevent memory leaks
+    postData.images.forEach(image => {
+      URL.revokeObjectURL(image.url);
+    });
+    navigate(-1); // Go back to previous page
+  };
+
   const isFormValid = postData.title.trim() || postData.content.trim() || postData.images.length > 0;
 
+  if (success) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-green-900 mb-2">Post Created Successfully!</h2>
+          <p className="text-green-700">Redirecting you to the home page...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
+    <div className="max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">Create New Post</h2>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Create New Post</h1>
+            <p className="text-gray-600 mt-1">Share your thoughts with the community</p>
+          </div>
           <button
-            onClick={onClose}
+            onClick={handleCancel}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" />
+            <span className="text-red-700 text-sm">{error}</span>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -164,13 +225,13 @@ const CreatePost = ({ isOpen, onClose, onPostCreated }) => {
               name="content"
               value={postData.content}
               onChange={handleInputChange}
-              rows={5}
+              rows={6}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               placeholder="Share your thoughts, ideas, or story..."
-              maxLength={500}
+              maxLength={2000}
             />
             <div className="text-right text-sm text-gray-400 mt-1">
-              {postData.content.length}/500
+              {postData.content.length}/2000
             </div>
           </div>
 
@@ -230,6 +291,9 @@ const CreatePost = ({ isOpen, onClose, onPostCreated }) => {
                     >
                       <X className="w-4 h-4" />
                     </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg truncate">
+                      {image.name}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -247,7 +311,7 @@ const CreatePost = ({ isOpen, onClose, onPostCreated }) => {
             <div className="flex space-x-3">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleCancel}
                 className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 Cancel
@@ -261,7 +325,7 @@ const CreatePost = ({ isOpen, onClose, onPostCreated }) => {
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
-                {isSubmitting ? 'Posting...' : 'Post'}
+                {isSubmitting ? 'Publishing...' : 'Publish Post'}
               </button>
             </div>
           </div>

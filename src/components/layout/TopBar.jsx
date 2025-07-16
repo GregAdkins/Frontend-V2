@@ -1,9 +1,24 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Menu, Search, X, User, LogOut } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import SearchBar from '../navigation/SearchBar';
-import { Menu, Search, X } from 'lucide-react';
 
-const TopBar = ({ onMenuClick, onAuthClick }) => {
+const TopBar = ({ onMenuClick }) => {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const handleProfileClick = () => {
+    navigate('/profile');
+    setShowUserMenu(false);
+  };
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between sticky top-0 z-30">
@@ -34,12 +49,39 @@ const TopBar = ({ onMenuClick, onAuthClick }) => {
               <Search className="w-5 h-5" />
             </button>
             
-            <button 
-              onClick={onAuthClick}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              Join
-            </button>
+            {/* User Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+              >
+                <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-pink-400 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">
+                    {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                  </span>
+                </div>
+                <span className="hidden md:block font-medium">{user?.name || 'User'}</span>
+              </button>
+              
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                  <button
+                    onClick={handleProfileClick}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
+                  >
+                    <User className="w-4 h-4 mr-3" />
+                    Profile
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
+                  >
+                    <LogOut className="w-4 h-4 mr-3" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </>
       ) : (
