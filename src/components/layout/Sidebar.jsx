@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Home, Compass, Plus, Eye, BarChart3, TrendingUp } from 'lucide-react';
 import NavItem from '../navigation/NavItem';
 
-const Sidebar = ({ isOpen, onClose }) => {
+const Sidebar = ({ isOpen, onClose, onCreatePost }) => {
   const [activeItem, setActiveItem] = useState('home');
   
   const menuItems = [
@@ -58,6 +58,5 @@ const Sidebar = ({ isOpen, onClose }) => {
     </>
   );
 };
-
 
 export default Sidebar;
