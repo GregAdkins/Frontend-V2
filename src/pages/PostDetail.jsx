@@ -1,4 +1,3 @@
-// src/pages/PostDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, MessageCircle, Share, Bookmark, MoreHorizontal, Loader, AlertCircle } from 'lucide-react';
@@ -128,7 +127,8 @@ const PostDetail = () => {
 
   const displayUser = {
     name: post.author || 'Unknown User',
-    verified: false
+    verified: false,
+    username: post.author || 'unknown'
   };
 
   return (
@@ -150,12 +150,12 @@ const PostDetail = () => {
             <div className="flex items-center">
               <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-pink-400 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold">
-                  {displayUser.name.split(' ').map(n => n[0]).join('')}
+                  {displayUser.username.substring(0, 2).toUpperCase()}
                 </span>
               </div>
               <div className="ml-4">
                 <div className="flex items-center">
-                  <h3 className="font-semibold text-gray-900">{displayUser.name}</h3>
+                  <h3 className="font-semibold text-gray-900">{displayUser.username}</h3>
                   {displayUser.verified && (
                     <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center ml-2">
                       <span className="text-white text-xs">✓</span>

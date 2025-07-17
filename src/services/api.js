@@ -134,6 +134,39 @@ export const authAPI = {
   }
 };
 
+// Users API endpoints
+export const usersAPI = {
+  getProfile: async () => {
+    const response = await api.get('/account/profile/');
+    return response.data;
+  },
+  
+  updateProfile: async (profileData) => {
+    // Handle FormData for file uploads (avatar, etc.)
+    const response = await api.patch('/account/profile/', profileData, {
+      headers: {
+        'Content-Type': profileData instanceof FormData ? 'multipart/form-data' : 'application/json',
+      },
+    });
+    return response.data;
+  },
+  
+  getUserPosts: async (username, page = 1) => {
+    const response = await api.get(`/account/users/${username}/posts/?page=${page}`);
+    return response.data;
+  },
+  
+  getUserStats: async (username) => {
+    const response = await api.get(`/account/users/${username}/stats/`);
+    return response.data;
+  },
+  
+  getActivity: async (page = 1) => {
+    const response = await api.get(`/account/activity/?page=${page}`);
+    return response.data;
+  }
+};
+
 // Posts API endpoints
 export const postsAPI = {
   getAllPosts: async (page = 1) => {
@@ -188,6 +221,12 @@ export const postsAPI = {
   
   searchPosts: async (query, page = 1) => {
     const response = await api.get(`/posts/search/?q=${encodeURIComponent(query)}&page=${page}`);
+    return response.data;
+  },
+  
+  // Get posts by specific user
+  getPostsByUser: async (username, page = 1) => {
+    const response = await api.get(`/posts/?author=${username}&page=${page}`);
     return response.data;
   }
 };

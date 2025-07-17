@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Heart, MessageCircle, Share, Bookmark, MoreHorizontal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { postsAPI } from '../../services/api';
 
 const PostCard = ({ post }) => {
+  const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
@@ -36,7 +38,13 @@ const PostCard = ({ post }) => {
   };
 
   const handleComment = () => {
-    console.log('Comment clicked for post:', post.id);
+    // Navigate to post detail page when comment button is clicked
+    navigate(`/post/${post.slug}`);
+  };
+
+  const handlePostClick = () => {
+    // Navigate to post detail page when title or image is clicked
+    navigate(`/post/${post.slug}`);
   };
 
   // Format timestamp
@@ -89,18 +97,40 @@ const PostCard = ({ post }) => {
       {/* Post Content */}
       <div className="p-4">
         {post.title && (
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
+          <h3 
+            onClick={handlePostClick}
+            className="text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:text-blue-600 transition-colors"
+          >
+            {post.title}
+          </h3>
         )}
         
         {post.content && (
-          <p className="text-gray-800 mb-4 leading-relaxed">
-            {post.content}
-          </p>
+          <div 
+            onClick={handlePostClick}
+            className="cursor-pointer"
+          >
+            <p className="text-gray-800 mb-4 leading-relaxed">
+              {post.content.length > 200 ? (
+                <>
+                  {post.content.substring(0, 200)}...
+                  <span className="text-blue-600 hover:text-blue-700 font-medium ml-1">
+                    Read more
+                  </span>
+                </>
+              ) : (
+                post.content
+              )}
+            </p>
+          </div>
         )}
         
         {post.image && (
           <div className="mb-4">
-            <div className="rounded-lg overflow-hidden">
+            <div 
+              className="rounded-lg overflow-hidden cursor-pointer" 
+              onClick={handlePostClick}
+            >
               <img 
                 src={post.image} 
                 alt={post.title || 'Post image'}

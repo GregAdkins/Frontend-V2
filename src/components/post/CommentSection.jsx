@@ -123,7 +123,7 @@ const CommentSection = ({ postId, onCommentAdded }) => {
           <div className="flex space-x-4">
             <div className="w-10 h-10 bg-gradient-to-r from-orange-400 to-pink-400 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold text-sm">
-                {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                {user?.username?.substring(0, 2).toUpperCase() || user?.name?.substring(0, 2).toUpperCase() || 'U'}
               </span>
             </div>
             <div className="flex-1">

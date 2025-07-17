@@ -1,4 +1,3 @@
-// src/components/post/CommentItem.jsx
 import React, { useState } from 'react';
 import { Heart, Reply, MoreHorizontal } from 'lucide-react';
 
@@ -29,7 +28,8 @@ const CommentItem = ({ comment, formatTimestamp, level = 0 }) => {
 
   const displayUser = {
     name: comment.user || 'Unknown User',
-    verified: false
+    verified: false,
+    username: comment.user || 'unknown'
   };
 
   // Limit nesting level to prevent too deep threading
@@ -44,7 +44,7 @@ const CommentItem = ({ comment, formatTimestamp, level = 0 }) => {
           {/* User Avatar */}
           <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-xs">
-              {displayUser.name.split(' ').map(n => n[0]).join('')}
+              {displayUser.username.substring(0, 2).toUpperCase()}
             </span>
           </div>
 
@@ -53,7 +53,7 @@ const CommentItem = ({ comment, formatTimestamp, level = 0 }) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="font-medium text-gray-900 text-sm">
-                  {displayUser.name}
+                  {displayUser.username}
                 </span>
                 {displayUser.verified && (
                   <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
@@ -110,7 +110,7 @@ const CommentItem = ({ comment, formatTimestamp, level = 0 }) => {
                     <textarea
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      placeholder={`Reply to ${displayUser.name}...`}
+                      placeholder={`Reply to ${displayUser.username}...`}
                       className="w-full p-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                       rows={2}
                       maxLength={300}

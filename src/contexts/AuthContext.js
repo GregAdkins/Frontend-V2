@@ -44,8 +44,10 @@ export const AuthProvider = ({ children }) => {
       // Use user info from response if available, otherwise create from email
       const userInfo = response.user || {
         email: credentials.email,
-        name: credentials.email.split('@')[0],
-        username: credentials.email.split('@')[0]
+        name: response.user?.first_name && response.user?.last_name 
+          ? `${response.user.first_name} ${response.user.last_name}`.trim()
+          : response.user?.username || credentials.email.split('@')[0],
+        username: response.user?.username || credentials.email.split('@')[0]
       };
       
       localStorage.setItem('user', JSON.stringify(userInfo));
