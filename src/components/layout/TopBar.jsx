@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Search, X, User, LogOut, Plane } from 'lucide-react';
+import { Menu, Search, X, User, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import SearchBar from '../navigation/SearchBar';
 
@@ -32,14 +32,19 @@ const TopBar = ({ onMenuClick }) => {
               <Menu className="w-6 h-6" />
             </button>
             
-            {/* Mobile logo - made bigger */}
             <div className="lg:hidden flex flex-col items-center space-y-1">
+              {/* Main 5thSocial Logo for mobile */}
               <img 
-                src="/logo-5thsocial.png" 
+                src="/5thsocial-logo.png" 
                 alt="5th Social" 
-                className="h-8 w-auto"
+                className="h-6 w-auto"
               />
-              <Plane className="w-4 h-4 text-blue-600" />
+              {/* S Logo */}
+              <img 
+                src="/s-logo.png" 
+                alt="S" 
+                className="h-3 w-auto opacity-80"
+              />
             </div>
             
             <div className="hidden sm:block">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, AlertCircle, Loader, CheckCircle, Plane } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, Loader, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Register = () => {
@@ -124,17 +124,22 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-        {/* Header - Made logo bigger */}
+        {/* Header with Custom Logos */}
         <div className="text-center mb-8">
           <div className="flex flex-col items-center space-y-4 mb-6">
+            {/* Main 5thSocial Logo */}
             <img 
-              src="/logo-5thsocial.png" 
+              src="/5thsocial-logo.png" 
               alt="5th Social" 
               className="h-16 w-auto"
             />
-            {/* Pilot Icon - Also made bigger */}
-            <div className="flex items-center justify-center p-3 bg-blue-50 rounded-full">
-              <Plane className="w-7 h-7 text-blue-600" />
+            {/* S Logo with background */}
+            <div className="flex items-center justify-center p-3 bg-gray-50 rounded-full">
+              <img 
+                src="/s-logo.png" 
+                alt="S" 
+                className="h-8 w-auto"
+              />
             </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Join 5th Social</h2>

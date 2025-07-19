@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Compass, Plus, Eye, BarChart3, TrendingUp, Plane } from 'lucide-react';
+import { Home, Compass, Plus, Eye, BarChart3, TrendingUp } from 'lucide-react';
 import NavItem from '../navigation/NavItem';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -43,18 +43,21 @@ const Sidebar = ({ isOpen, onClose }) => {
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* Logo - Made bigger */}
+        {/* Logo */}
         <div className="p-4 lg:p-6 border-b border-gray-100 flex items-center justify-between">
           <div className="flex flex-col items-center space-y-3">
+            {/* Main 5thSocial Logo */}
             <img 
-              src="/logo-5thsocial.png" 
+              src="/5thsocial-logo.png" 
               alt="5th Social" 
               className="h-12 lg:h-14 w-auto"
             />
-            {/* Pilot Icon */}
-            <div className="flex items-center justify-center">
-              <Plane className="w-6 h-6 text-blue-600" />
-            </div>
+            {/* S Logo (replacing plane icon) */}
+            <img 
+              src="/s-logo.png" 
+              alt="S" 
+              className="h-6 w-auto opacity-80"
+            />
           </div>
           <button 
             onClick={onClose}

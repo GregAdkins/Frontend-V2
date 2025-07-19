@@ -79,11 +79,19 @@ const EmailVerification = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center">
-          <div className="flex justify-center mb-4">
+          {/* Header with Custom Logos */}
+          <div className="flex flex-col items-center space-y-4 mb-6">
+            {/* Main 5thSocial Logo */}
             <img 
-              src="/logo-5thsocial.png" 
+              src="/5thsocial-logo.png" 
               alt="5th Social" 
               className="h-12 w-auto"
+            />
+            {/* S Logo */}
+            <img 
+              src="/s-logo.png" 
+              alt="S" 
+              className="h-6 w-auto opacity-80"
             />
           </div>
 
