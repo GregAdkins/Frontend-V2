@@ -11,6 +11,21 @@ import Profile from './pages/Profile';
 import EmailVerification from './pages/EmailVerification';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
+// Placeholder components for new routes
+const Campaign = () => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <h1 className="text-2xl font-bold text-gray-900 mb-4">Campaign</h1>
+    <p className="text-gray-600">Campaign management and creation tools coming soon.</p>
+  </div>
+);
+
+const Mission = () => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <h1 className="text-2xl font-bold text-gray-900 mb-4">Mission</h1>
+    <p className="text-gray-600">Mission and goals tracking coming soon.</p>
+  </div>
+);
+
 const App = () => {
   return (
     <AuthProvider>
@@ -27,14 +42,23 @@ const App = () => {
               <Layout />
             </ProtectedRoute>
           }>
+            {/* Main Feed Route */}
             <Route index element={<Home />} />
+            
+            {/* Navigation Routes */}
             <Route path="create" element={<CreatePost />} />
-            <Route path="post/:slug" element={<PostDetail />} />
+            <Route path="campaign" element={<Campaign />} />
+            <Route path="mission" element={<Mission />} />
             <Route path="profile" element={<Profile />} />
-            <Route path="discover" element={<div>Discover Page</div>} />
-            <Route path="explore" element={<div>Explore & Art Page</div>} />
-            <Route path="data" element={<div>Data Environment Page</div>} />
-            <Route path="trending" element={<div>Trending Page</div>} />
+            
+            {/* Post Detail */}
+            <Route path="post/:slug" element={<PostDetail />} />
+            
+            {/* Legacy routes for backward compatibility */}
+            <Route path="discover" element={<Navigate to="/campaign" replace />} />
+            <Route path="explore" element={<Navigate to="/mission" replace />} />
+            <Route path="data" element={<Navigate to="/mission" replace />} />
+            <Route path="trending" element={<Navigate to="/" replace />} />
           </Route>
           
           {/* Catch all route */}

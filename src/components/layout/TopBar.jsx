@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Search, X, User, LogOut } from 'lucide-react';
+import { Menu, Search, X, User, LogOut, Plane } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import SearchBar from '../navigation/SearchBar';
 
@@ -32,8 +32,13 @@ const TopBar = ({ onMenuClick }) => {
               <Menu className="w-6 h-6" />
             </button>
             
-            <div className="lg:hidden">
-              <h1 className="text-xl font-bold text-blue-600">5th Social</h1>
+            <div className="lg:hidden flex flex-col items-center space-y-1">
+              <img 
+                src="/logo-5thsocial.png" 
+                alt="5th Social" 
+                className="h-6 w-auto"
+              />
+              <Plane className="w-3 h-3 text-blue-600" />
             </div>
             
             <div className="hidden sm:block">

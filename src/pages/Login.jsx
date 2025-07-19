@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, AlertCircle, Loader } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Loader, Plane } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
@@ -53,7 +53,17 @@ const Login = () => {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-600 mb-2">5th Social</h1>
+          <div className="flex flex-col items-center space-y-3 mb-4">
+            <img 
+              src="/logo-5thsocial.png" 
+              alt="5th Social" 
+              className="h-12 w-auto"
+            />
+            {/* Pilot Icon */}
+            <div className="flex items-center justify-center p-2 bg-blue-50 rounded-full">
+              <Plane className="w-6 h-6 text-blue-600" />
+            </div>
+          </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
           <p className="text-gray-600">Sign in to your account</p>
         </div>
