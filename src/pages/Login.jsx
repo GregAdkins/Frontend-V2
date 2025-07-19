@@ -51,17 +51,17 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-        {/* Header */}
+        {/* Header - Made logo bigger */}
         <div className="text-center mb-8">
-          <div className="flex flex-col items-center space-y-3 mb-4">
+          <div className="flex flex-col items-center space-y-4 mb-6">
             <img 
               src="/logo-5thsocial.png" 
               alt="5th Social" 
-              className="h-12 w-auto"
+              className="h-16 w-auto"
             />
-            {/* Pilot Icon */}
-            <div className="flex items-center justify-center p-2 bg-blue-50 rounded-full">
-              <Plane className="w-6 h-6 text-blue-600" />
+            {/* Pilot Icon - Also made bigger */}
+            <div className="flex items-center justify-center p-3 bg-blue-50 rounded-full">
+              <Plane className="w-7 h-7 text-blue-600" />
             </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>

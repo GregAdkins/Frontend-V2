@@ -43,17 +43,17 @@ const Sidebar = ({ isOpen, onClose }) => {
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* Logo */}
+        {/* Logo - Made bigger */}
         <div className="p-4 lg:p-6 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex flex-col items-center space-y-2">
+          <div className="flex flex-col items-center space-y-3">
             <img 
               src="/logo-5thsocial.png" 
               alt="5th Social" 
-              className="h-8 w-auto"
+              className="h-12 lg:h-14 w-auto"
             />
             {/* Pilot Icon */}
             <div className="flex items-center justify-center">
-              <Plane className="w-5 h-5 text-blue-600" />
+              <Plane className="w-6 h-6 text-blue-600" />
             </div>
           </div>
           <button 

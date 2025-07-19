@@ -32,13 +32,14 @@ const TopBar = ({ onMenuClick }) => {
               <Menu className="w-6 h-6" />
             </button>
             
+            {/* Mobile logo - made bigger */}
             <div className="lg:hidden flex flex-col items-center space-y-1">
               <img 
                 src="/logo-5thsocial.png" 
                 alt="5th Social" 
-                className="h-6 w-auto"
+                className="h-8 w-auto"
               />
-              <Plane className="w-3 h-3 text-blue-600" />
+              <Plane className="w-4 h-4 text-blue-600" />
             </div>
             
             <div className="hidden sm:block">
