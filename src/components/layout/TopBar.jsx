@@ -37,7 +37,7 @@ const TopBar = ({ onMenuClick }) => {
               <img 
                 src="/5thsocial-logo.png" 
                 alt="5th Social" 
-                className="h-8 w-auto"
+                className="h-10 w-auto"
               />
               {}
               <img 
@@ -66,7 +66,7 @@ const TopBar = ({ onMenuClick }) => {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
               >
-                <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-pink-400 rounded-full flex items-center justify-center">
+                <div className="w-8 h-10 bg-gradient-to-r from-orange-400 to-pink-400 rounded-full flex items-center justify-center">
                   <span className="text-white font-bold text-sm">
                     {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                   </span>
