@@ -32,18 +32,18 @@ const TopBar = ({ onMenuClick }) => {
               <Menu className="w-6 h-6" />
             </button>
             
-            <div className="lg:hidden flex flex-col items-center space-y-1">
-              {/* Main 5thSocial Logo for mobile */}
+            <div className="lg:hidden flex flex-col items-center space-y-2">
+              {}
               <img 
                 src="/5thsocial-logo.png" 
                 alt="5th Social" 
-                className="h-6 w-auto"
+                className="h-8 w-auto"
               />
-              {/* S Logo */}
+              {}
               <img 
                 src="/s-logo.png" 
                 alt="S" 
-                className="h-3 w-auto opacity-80"
+                className="h-5 w-auto opacity-80"
               />
             </div>
             
@@ -60,7 +60,7 @@ const TopBar = ({ onMenuClick }) => {
               <Search className="w-5 h-5" />
             </button>
             
-            {/* User Menu */}
+            {}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
