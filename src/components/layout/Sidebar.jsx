@@ -1,17 +1,19 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Compass, Plus, Eye, BarChart3, TrendingUp } from 'lucide-react';
+import { Home, Compass, Plus, Eye, BarChart3, TrendingUp, User } from 'lucide-react';
 import NavItem from '../navigation/NavItem';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   
+  // Updated menu items with your landing page navigation names
   const menuItems = [
-    { id: 'home', label: 'Home', icon: Home, path: '/' },
-    { id: 'discover', label: 'Discover', icon: Compass, path: '/discover' },
+    { id: 'feed', label: 'Feed', icon: Home, path: '/' },
+    { id: 'campaign', label: 'Campaign', icon: Compass, path: '/campaign' },
     { id: 'create', label: 'Create', icon: Plus, path: '/create' },
-    { id: 'explore', label: 'Explore & Art', icon: Eye, path: '/explore' },
+    { id: 'mission', label: 'Mission', icon: Eye, path: '/mission' },
+    { id: 'profile', label: 'Profile', icon: User, path: '/profile' },
     { id: 'data', label: 'Data Environment', icon: BarChart3, path: '/data' },
     { id: 'trending', label: 'Trending', icon: TrendingUp, path: '/trending' },
   ];
@@ -23,7 +25,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const getActiveItem = () => {
     const currentPath = location.pathname;
-    return menuItems.find(item => item.path === currentPath)?.id || 'home';
+    return menuItems.find(item => item.path === currentPath)?.id || 'feed';
   };
 
   return (
