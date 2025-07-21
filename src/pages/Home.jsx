@@ -72,7 +72,7 @@ const Home = () => {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading feed...</p>
+          <p className="text-gray-600">Loading posts...</p>
         </div>
       </div>
     );
@@ -80,9 +80,9 @@ const Home = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header - Updated to reflect Feed naming */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Feed</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Home Feed</h1>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
