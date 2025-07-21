@@ -12,17 +12,45 @@ import EmailVerification from './pages/EmailVerification';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Placeholder components for new routes
-const Campaign = () => (
+const Search = () => (
   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-    <h1 className="text-2xl font-bold text-gray-900 mb-4">Campaign</h1>
-    <p className="text-gray-600">Campaign management and creation tools coming soon.</p>
+    <h1 className="text-2xl font-bold text-gray-900 mb-4">Search</h1>
+    <div className="mb-6">
+      <input
+        type="text"
+        placeholder="Search for posts, users, or topics..."
+        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      />
+    </div>
+    <p className="text-gray-600">Advanced search functionality coming soon.</p>
   </div>
 );
 
 const Mission = () => (
   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
     <h1 className="text-2xl font-bold text-gray-900 mb-4">Mission</h1>
-    <p className="text-gray-600">Mission and goals tracking coming soon.</p>
+    <div className="space-y-4">
+      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+        <h3 className="font-semibold text-green-900 mb-2">Our Mission</h3>
+        <p className="text-green-800 text-sm">
+          To create a platform that connects people through meaningful content and authentic interactions.
+        </p>
+      </div>
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <h3 className="font-semibold text-blue-900 mb-2">Your Mission</h3>
+        <p className="text-blue-800 text-sm">
+          Set and track your personal goals and missions within the community.
+        </p>
+      </div>
+    </div>
+    <p className="text-gray-600 mt-4">Mission tracking and goal management features coming soon.</p>
+  </div>
+);
+
+const Campaign = () => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <h1 className="text-2xl font-bold text-gray-900 mb-4">Campaign</h1>
+    <p className="text-gray-600">Campaign management and creation tools coming soon.</p>
   </div>
 );
 
@@ -46,9 +74,10 @@ const App = () => {
             <Route index element={<Home />} />
             
             {/* Navigation Routes */}
+            <Route path="search" element={<Search />} />
             <Route path="create" element={<CreatePost />} />
-            <Route path="campaign" element={<Campaign />} />
             <Route path="mission" element={<Mission />} />
+            <Route path="campaign" element={<Campaign />} />
             <Route path="profile" element={<Profile />} />
             
             {/* Post Detail */}
