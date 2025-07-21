@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Compass, Plus, Eye, BarChart3, TrendingUp, FileText, Image, Video, BookOpen, Workflow, Target, ChevronRight, ChevronDown } from 'lucide-react';
+import { Home, Compass, Plus, Eye, BarChart3, TrendingUp, FileText, Image, Video, BookOpen, Workflow, Target, ArrowLeft } from 'lucide-react';
 import NavItem from '../navigation/NavItem';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -43,37 +43,13 @@ const Sidebar = ({ isOpen, onClose }) => {
     setShowCreatePanel(false);
   };
 
+  const handleBackToMainNav = () => {
+    setShowCreatePanel(false);
+  };
+
   const getActiveItem = () => {
     const currentPath = location.pathname;
     return menuItems.find(item => item.path === currentPath)?.id || 'home';
-  };
-
-  // Custom NavItem component for Create with expandable functionality
-  const CreateNavItem = ({ icon: Icon, label, isActive, onClick, hasSubMenu, isExpanded }) => {
-    return (
-      <button
-        onClick={onClick}
-        className={`w-full flex items-center justify-between px-4 lg:px-6 py-3 text-left transition-colors ${
-          isActive
-            ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
-            : 'text-gray-700 hover:bg-gray-50'
-        }`}
-      >
-        <div className="flex items-center">
-          <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-          <span className="font-medium">{label}</span>
-        </div>
-        {hasSubMenu && (
-          <div className="ml-auto">
-            {isExpanded ? (
-              <ChevronDown className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-            ) : (
-              <ChevronRight className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-            )}
-          </div>
-        )}
-      </button>
-    );
   };
 
   return (
@@ -92,7 +68,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         w-64 lg:w-64 xl:w-72 bg-white border-r border-gray-200 h-screen
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        overflow-y-auto
+        overflow-hidden
       `}>
         {/* Logo */}
         <div className="p-4 lg:p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
@@ -118,53 +94,68 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
         
-        {/* Menu Items */}
-        <nav className="mt-6 flex-1">
-          {menuItems.map((item) => (
-            <div key={item.id}>
-              {item.hasSubMenu ? (
-                <CreateNavItem
-                  icon={item.icon}
-                  label={item.label}
-                  isActive={getActiveItem() === item.id || showCreatePanel}
-                  onClick={() => handleItemClick(item)}
-                  hasSubMenu={item.hasSubMenu}
-                  isExpanded={showCreatePanel}
-                />
-              ) : (
+        {/* Navigation Container */}
+        <div className="relative h-full overflow-hidden">
+          {/* Main Navigation */}
+          <nav className={`
+            absolute inset-0 transition-transform duration-300 ease-in-out
+            ${showCreatePanel ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}
+          `}>
+            <div className="mt-6 space-y-1">
+              {menuItems.map((item) => (
                 <NavItem
+                  key={item.id}
                   icon={item.icon}
                   label={item.label}
-                  isActive={getActiveItem() === item.id}
+                  isActive={getActiveItem() === item.id || (item.id === 'create' && showCreatePanel)}
                   onClick={() => handleItemClick(item)}
                 />
-              )}
-              
-              {/* Mobile: Inline Create Options (shows within the main nav) */}
-              {item.hasSubMenu && showCreatePanel && (
-                <div className="lg:hidden bg-gray-50 border-t border-gray-200">
-                  <div className="py-2">
-                    {createOptions.map((option) => (
-                      <button
-                        key={option.id}
-                        onClick={() => handleCreateOptionClick(option)}
-                        className="w-full flex items-center px-8 py-3 text-left hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
-                          <option.icon className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-sm font-medium text-gray-900">{option.label}</h3>
-                          <p className="text-xs text-gray-500">{option.description}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
-          ))}
-        </nav>
+          </nav>
+
+          {/* Mobile: Create Panel (slides from right) */}
+          <div className={`
+            lg:hidden absolute inset-0 bg-white
+            transition-transform duration-300 ease-in-out
+            ${showCreatePanel ? 'translate-x-0' : 'translate-x-full'}
+          `}>
+            {/* Create Panel Header */}
+            <div className="p-4 lg:p-6 border-b border-gray-100">
+              <div className="flex items-center">
+                <button
+                  onClick={handleBackToMainNav}
+                  className="mr-3 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+                </button>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">CREATE</h2>
+                  <p className="text-gray-600 text-sm">Choose what you want to create</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Create Options */}
+            <div className="p-4 space-y-2 overflow-y-auto">
+              {createOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleCreateOptionClick(option)}
+                  className="w-full flex items-center p-4 text-left rounded-lg hover:bg-gray-50 transition-colors group"
+                >
+                  <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mr-4 group-hover:bg-blue-100 transition-colors">
+                    <option.icon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{option.label}</h3>
+                    <p className="text-sm text-gray-500">{option.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Desktop: Create Panel Slide-out (only shown on lg+ screens) */}
