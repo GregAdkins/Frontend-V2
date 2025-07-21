@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Compass, Plus, Eye, BarChart3, TrendingUp, FileText, Image, Video, BookOpen, Workflow, Target } from 'lucide-react';
+import { Home, Compass, Plus, Eye, BarChart3, TrendingUp, FileText, Image, Video, BookOpen, Workflow, Target, ChevronRight, ChevronDown } from 'lucide-react';
 import NavItem from '../navigation/NavItem';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -48,6 +48,34 @@ const Sidebar = ({ isOpen, onClose }) => {
     return menuItems.find(item => item.path === currentPath)?.id || 'home';
   };
 
+  // Custom NavItem component for Create with expandable functionality
+  const CreateNavItem = ({ icon: Icon, label, isActive, onClick, hasSubMenu, isExpanded }) => {
+    return (
+      <button
+        onClick={onClick}
+        className={`w-full flex items-center justify-between px-4 lg:px-6 py-3 text-left transition-colors ${
+          isActive
+            ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
+            : 'text-gray-700 hover:bg-gray-50'
+        }`}
+      >
+        <div className="flex items-center">
+          <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+          <span className="font-medium">{label}</span>
+        </div>
+        {hasSubMenu && (
+          <div className="ml-auto">
+            {isExpanded ? (
+              <ChevronDown className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+            ) : (
+              <ChevronRight className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+            )}
+          </div>
+        )}
+      </button>
+    );
+  };
+
   return (
     <>
       {/* Mobile overlay */}
@@ -64,9 +92,10 @@ const Sidebar = ({ isOpen, onClose }) => {
         w-64 lg:w-64 xl:w-72 bg-white border-r border-gray-200 h-screen
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        overflow-y-auto
       `}>
         {/* Logo */}
-        <div className="p-4 lg:p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="p-4 lg:p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
           <div className="flex flex-col items-center space-y-3">
             {/* Main 5thSocial Logo */}
             <img 
@@ -90,22 +119,58 @@ const Sidebar = ({ isOpen, onClose }) => {
         </div>
         
         {/* Menu Items */}
-        <nav className="mt-6">
+        <nav className="mt-6 flex-1">
           {menuItems.map((item) => (
-            <NavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={getActiveItem() === item.id || (item.id === 'create' && showCreatePanel)}
-              onClick={() => handleItemClick(item)}
-            />
+            <div key={item.id}>
+              {item.hasSubMenu ? (
+                <CreateNavItem
+                  icon={item.icon}
+                  label={item.label}
+                  isActive={getActiveItem() === item.id || showCreatePanel}
+                  onClick={() => handleItemClick(item)}
+                  hasSubMenu={item.hasSubMenu}
+                  isExpanded={showCreatePanel}
+                />
+              ) : (
+                <NavItem
+                  icon={item.icon}
+                  label={item.label}
+                  isActive={getActiveItem() === item.id}
+                  onClick={() => handleItemClick(item)}
+                />
+              )}
+              
+              {/* Mobile: Inline Create Options (shows within the main nav) */}
+              {item.hasSubMenu && showCreatePanel && (
+                <div className="lg:hidden bg-gray-50 border-t border-gray-200">
+                  <div className="py-2">
+                    {createOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => handleCreateOptionClick(option)}
+                        className="w-full flex items-center px-8 py-3 text-left hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
+                          <option.icon className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-gray-900">{option.label}</h3>
+                          <p className="text-xs text-gray-500">{option.description}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
         </nav>
       </div>
 
-      {/* Create Panel Slide-out */}
+      {/* Desktop: Create Panel Slide-out (only shown on lg+ screens) */}
       {showCreatePanel && (
         <div className={`
+          hidden lg:block
           fixed lg:absolute z-40 lg:z-30
           left-64 lg:left-64 xl:left-72 top-0 h-screen
           w-80 bg-white border-r border-gray-200 shadow-lg
@@ -147,14 +212,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             </button>
           </div>
         </div>
-      )}
-
-      {/* Overlay for create panel on mobile */}
-      {showCreatePanel && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-25 z-30 lg:hidden"
-          onClick={() => setShowCreatePanel(false)}
-        />
       )}
     </>
   );
