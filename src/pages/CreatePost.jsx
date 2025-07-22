@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Image, 
   Upload, 
@@ -13,14 +12,13 @@ import {
   Workflow,
   Camera,
   Plus,
-  Minus
+  Minus,
+  Info
 } from 'lucide-react';
-import { postsAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 
-const CreatePost = () => {
-  const [searchParams] = useSearchParams();
-  const contentType = searchParams.get('type') || 'post';
+const CreatePost = ({ searchParams, postsAPI, useAuth, onNavigate }) => {
+  const contentType = searchParams?.get?.('type') || 'post';
+  const { user } = useAuth();
   
   const [postData, setPostData] = useState({
     title: '',
@@ -39,11 +37,10 @@ const CreatePost = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
-  
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const [warnings, setWarnings] = useState([]);
+  const [fileValidationInfo, setFileValidationInfo] = useState(null);
 
-  // Content type configurations
+  // Content type configurations with enhanced file validation
   const contentTypeConfig = {
     post: {
       title: 'Create New Post',
@@ -54,6 +51,10 @@ const CreatePost = () => {
       placeholderContent: 'Share your thoughts, ideas, or story...',
       acceptedFiles: 'image/*,video/*',
       maxFiles: 5,
+      maxImageSize: 10, // MB
+      maxVideoSize: 100, // MB
+      supportedImageFormats: ['JPEG', 'PNG', 'GIF', 'WebP'],
+      supportedVideoFormats: ['MP4', 'WebM', 'OGG', 'MOV'],
       validation: {
         titleRequired: false,
         contentMinLength: 0,
@@ -69,6 +70,8 @@ const CreatePost = () => {
       placeholderContent: 'Describe your image or add context...',
       acceptedFiles: 'image/*',
       maxFiles: 10,
+      maxImageSize: 10,
+      supportedImageFormats: ['JPEG', 'PNG', 'GIF', 'WebP'],
       validation: {
         titleRequired: true,
         contentMinLength: 0,
@@ -85,6 +88,10 @@ const CreatePost = () => {
       placeholderContent: 'Describe your video content...',
       acceptedFiles: 'video/*,image/*',
       maxFiles: 3,
+      maxImageSize: 10,
+      maxVideoSize: 100,
+      supportedImageFormats: ['JPEG', 'PNG', 'WebP'],
+      supportedVideoFormats: ['MP4', 'WebM', 'OGG', 'MOV', 'AVI'],
       validation: {
         titleRequired: false,
         contentMinLength: 0,
@@ -101,6 +108,8 @@ const CreatePost = () => {
       placeholderContent: 'Write your story here. Tell us what happened, what you learned, or what you want to share...',
       acceptedFiles: 'image/*',
       maxFiles: 8,
+      maxImageSize: 10,
+      supportedImageFormats: ['JPEG', 'PNG', 'GIF', 'WebP'],
       validation: {
         titleRequired: true,
         contentMinLength: 100,
@@ -116,6 +125,8 @@ const CreatePost = () => {
       placeholderContent: 'Describe your workflow, process steps, or methodology...',
       acceptedFiles: 'image/*',
       maxFiles: 5,
+      maxImageSize: 10,
+      supportedImageFormats: ['JPEG', 'PNG', 'GIF', 'WebP'],
       validation: {
         titleRequired: true,
         contentMinLength: 0,
@@ -131,12 +142,69 @@ const CreatePost = () => {
     setPostData(prev => ({ ...prev, contentType }));
   }, [contentType]);
 
+  // Client-side file validation (mirrors backend validation)
+  const validateFile = (file, fileType = 'auto') => {
+    const errors = [];
+    const warnings = [];
+    
+    // Detect file type if not specified
+    if (fileType === 'auto') {
+      fileType = file.type.startsWith('video/') ? 'video' : 'image';
+    }
+    
+    // Size validation
+    const maxSize = fileType === 'video' ? config.maxVideoSize : config.maxImageSize;
+    const fileSizeMB = file.size / (1024 * 1024);
+    
+    if (fileSizeMB > maxSize) {
+      errors.push(`File size (${fileSizeMB.toFixed(1)}MB) exceeds ${maxSize}MB limit`);
+    } else if (fileSizeMB > maxSize * 0.8) {
+      warnings.push(`Large file size (${fileSizeMB.toFixed(1)}MB) may take longer to upload`);
+    }
+    
+    // Format validation
+    const supportedFormats = fileType === 'video' 
+      ? config.supportedVideoFormats 
+      : config.supportedImageFormats;
+    
+    const fileExtension = file.name.split('.').pop()?.toUpperCase();
+    const mimeType = file.type.toLowerCase();
+    
+    let isValidFormat = false;
+    
+    if (fileType === 'video') {
+      isValidFormat = supportedFormats.some(format => 
+        mimeType.includes(format.toLowerCase()) || 
+        fileExtension === format ||
+        (format === 'MOV' && (mimeType.includes('quicktime') || fileExtension === 'MOV'))
+      );
+    } else {
+      isValidFormat = supportedFormats.some(format => 
+        mimeType.includes(format.toLowerCase()) || 
+        fileExtension === format ||
+        (format === 'JPEG' && (fileExtension === 'JPG' || fileExtension === 'JPEG'))
+      );
+    }
+    
+    if (!isValidFormat) {
+      errors.push(`Unsupported ${fileType} format. Supported: ${supportedFormats.join(', ')}`);
+    }
+    
+    // Dimension warnings for images (client-side estimate)
+    if (fileType === 'image' && file.size > 5 * 1024 * 1024) {
+      warnings.push('Large images may be automatically compressed');
+    }
+    
+    return { errors, warnings, fileType, sizeMB: fileSizeMB };
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setPostData(prev => ({
       ...prev,
       [name]: value
     }));
+    
     // Clear errors when user starts typing
     if (error) setError('');
     if (validationErrors[name]) {
@@ -148,42 +216,51 @@ const CreatePost = () => {
   };
 
   const handleImageUpload = (files) => {
-    const validFiles = Array.from(files).filter(file => {
-      // For video content type, allow both video and image files
-      if (contentType === 'video') {
-        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-          setError('Please select only image or video files');
-          return false;
-        }
-      } else {
-        // For other content types, only allow images
-        if (!file.type.startsWith('image/')) {
-          setError('Please select only image files');
-          return false;
-        }
-      }
+    const allWarnings = [];
+    const fileValidationResults = [];
+    
+    const validFiles = Array.from(files).filter((file, index) => {
+      const result = validateFile(file, contentType === 'video' ? 'auto' : 'image');
+      fileValidationResults.push({ file, ...result });
       
-      // Validate file size (100MB max for videos, 10MB for images)
-      const maxSize = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
-      if (file.size > maxSize) {
-        setError(`File size must be less than ${file.type.startsWith('video/') ? '100MB' : '10MB'}`);
+      if (result.errors.length > 0) {
+        setError(`File "${file.name}": ${result.errors[0]}`);
         return false;
       }
+      
+      if (result.warnings.length > 0) {
+        allWarnings.push(...result.warnings.map(w => `${file.name}: ${w}`));
+      }
+      
       return true;
     });
+
+    if (allWarnings.length > 0) {
+      setWarnings(allWarnings);
+    }
+
+    if (validFiles.length === 0) return;
 
     const newImages = validFiles.slice(0, config.maxFiles - postData.images.length).map(file => ({
       id: Date.now() + Math.random(),
       file,
       url: URL.createObjectURL(file),
       name: file.name,
-      type: file.type
+      type: file.type,
+      sizeMB: (file.size / (1024 * 1024)).toFixed(1)
     }));
     
     setPostData(prev => ({
       ...prev,
       images: [...prev.images, ...newImages]
     }));
+
+    // Show file info
+    setFileValidationInfo({
+      totalFiles: validFiles.length,
+      totalSize: validFiles.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024),
+      types: [...new Set(validFiles.map(f => f.type.split('/')[0]))]
+    });
   };
 
   const handleFileInput = (e) => {
@@ -215,8 +292,18 @@ const CreatePost = () => {
   const removeImage = (imageId) => {
     setPostData(prev => ({
       ...prev,
-      images: prev.images.filter(img => img.id !== imageId)
+      images: prev.images.filter(img => {
+        if (img.id === imageId) {
+          URL.revokeObjectURL(img.url); // Clean up memory
+        }
+        return img.id !== imageId;
+      })
     }));
+    
+    // Update file info
+    if (postData.images.length <= 1) {
+      setFileValidationInfo(null);
+    }
   };
 
   // Workflow steps management
@@ -300,6 +387,7 @@ const CreatePost = () => {
 
     setIsSubmitting(true);
     setError('');
+    setValidationErrors({});
     
     try {
       // Create FormData for file upload
@@ -353,7 +441,9 @@ const CreatePost = () => {
           contentType: 'post' 
         });
         setSuccess(false);
-        navigate('/', { replace: true });
+        if (onNavigate) {
+          onNavigate('/', { replace: true });
+        }
       }, 2000);
       
     } catch (error) {
@@ -364,8 +454,13 @@ const CreatePost = () => {
         const backendErrors = error.response.data;
         if (typeof backendErrors === 'object') {
           setValidationErrors(backendErrors);
-          // Create a summary error message
-          const errorMessages = Object.values(backendErrors).flat();
+          
+          // Create a user-friendly summary error message
+          const errorMessages = Object.entries(backendErrors).map(([field, errors]) => {
+            const errorList = Array.isArray(errors) ? errors : [errors];
+            return `${field}: ${errorList[0]}`;
+          });
+          
           setError(errorMessages[0] || 'Please fix the errors below');
         } else {
           setError(backendErrors || 'Failed to create post');
@@ -383,7 +478,9 @@ const CreatePost = () => {
     postData.images.forEach(image => {
       URL.revokeObjectURL(image.url);
     });
-    navigate(-1);
+    if (onNavigate) {
+      onNavigate(-1);
+    }
   };
 
   const isFormValid = () => {
@@ -437,9 +534,29 @@ const CreatePost = () => {
 
         {/* Error Alert */}
         {error && (
-          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
-            <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" />
-            <span className="text-red-700 text-sm">{error}</span>
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
+            <div>
+              <span className="text-red-700 text-sm font-medium">Error creating post</span>
+              <p className="text-red-600 text-sm mt-1">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Warnings Alert */}
+        {warnings.length > 0 && (
+          <div className="mx-6 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start">
+              <Info className="w-5 h-5 text-yellow-500 mr-3 flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="text-yellow-700 text-sm font-medium">Warnings</span>
+                <ul className="text-yellow-600 text-sm mt-1 space-y-1">
+                  {warnings.map((warning, index) => (
+                    <li key={index}>• {warning}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         )}
 
@@ -505,6 +622,131 @@ const CreatePost = () => {
               </span>
               <span>{postData.content.length}/{contentType === 'story' ? 10000 : 2000}</span>
             </div>
+          </div>
+
+          {/* File Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {contentType === 'video' ? (
+                <>
+                  <Video className="inline w-4 h-4 mr-2" />
+                  Media Files (Images & Videos, Max {config.maxFiles})
+                  {config.validation.mediaRequired && <span className="text-red-500 ml-1">*</span>}
+                </>
+              ) : (
+                <>
+                  <Image className="inline w-4 h-4 mr-2" />
+                  Images (Max {config.maxFiles})
+                  {config.validation.mediaRequired && <span className="text-red-500 ml-1">*</span>}
+                </>
+              )}
+            </label>
+            
+            {/* File Requirements Info */}
+            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="text-sm text-blue-800">
+                <strong>File Requirements:</strong>
+                <ul className="mt-1 space-y-1">
+                  {config.supportedImageFormats && (
+                    <li>• Images: {config.supportedImageFormats.join(', ')} (Max {config.maxImageSize}MB)</li>
+                  )}
+                  {config.supportedVideoFormats && (
+                    <li>• Videos: {config.supportedVideoFormats.join(', ')} (Max {config.maxVideoSize}MB)</li>
+                  )}
+                  <li>• Maximum {config.maxFiles} files total</li>
+                </ul>
+              </div>
+            </div>
+            
+            {/* Drag & Drop Area */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                dragActive 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : validationErrors.media ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              {contentType === 'video' ? (
+                <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              ) : (
+                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              )}
+              <p className="text-gray-600 mb-2">
+                Drag and drop {contentType === 'video' ? 'media files' : 'images'} here, or{' '}
+                <label className="text-blue-600 hover:text-blue-500 cursor-pointer font-medium">
+                  browse
+                  <input
+                    type="file"
+                    multiple
+                    accept={config.acceptedFiles}
+                    onChange={handleFileInput}
+                    className="hidden"
+                    disabled={postData.images.length >= config.maxFiles}
+                  />
+                </label>
+              </p>
+              <p className="text-sm text-gray-500">
+                {contentType === 'video' 
+                  ? `Images up to ${config.maxImageSize}MB, Videos up to ${config.maxVideoSize}MB`
+                  : `${config.supportedImageFormats.join(', ')} up to ${config.maxImageSize}MB each`
+                }
+              </p>
+            </div>
+
+            {validationErrors.media && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.media}</p>
+            )}
+
+            {/* File Validation Info */}
+            {fileValidationInfo && (
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  ✓ {fileValidationInfo.totalFiles} file(s) ready to upload 
+                  ({fileValidationInfo.totalSize.toFixed(1)}MB total)
+                </p>
+              </div>
+            )}
+
+            {/* File Preview */}
+            {postData.images.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {postData.images.map((media) => (
+                  <div key={media.id} className="relative group">
+                    {media.type.startsWith('video/') ? (
+                      <video
+                        src={media.url}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                        controls={false}
+                        muted
+                      />
+                    ) : (
+                      <img
+                        src={media.url}
+                        alt={media.name}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeImage(media.id)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg truncate">
+                      {media.type.startsWith('video/') && (
+                        <Video className="inline w-3 h-3 mr-1" />
+                      )}
+                      {media.name} ({media.sizeMB}MB)
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tags */}
@@ -605,105 +847,6 @@ const CreatePost = () => {
             </div>
           )}
 
-          {/* File Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {contentType === 'video' ? (
-                <>
-                  <Video className="inline w-4 h-4 mr-2" />
-                  Media Files (Images & Videos, Max {config.maxFiles})
-                  {config.validation.mediaRequired && <span className="text-red-500 ml-1">*</span>}
-                </>
-              ) : (
-                <>
-                  <Image className="inline w-4 h-4 mr-2" />
-                  Images (Max {config.maxFiles})
-                  {config.validation.mediaRequired && <span className="text-red-500 ml-1">*</span>}
-                </>
-              )}
-            </label>
-            
-            {/* Drag & Drop Area */}
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                dragActive 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : validationErrors.media ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              {contentType === 'video' ? (
-                <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              ) : (
-                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              )}
-              <p className="text-gray-600 mb-2">
-                Drag and drop {contentType === 'video' ? 'media files' : 'images'} here, or{' '}
-                <label className="text-blue-600 hover:text-blue-500 cursor-pointer font-medium">
-                  browse
-                  <input
-                    type="file"
-                    multiple
-                    accept={config.acceptedFiles}
-                    onChange={handleFileInput}
-                    className="hidden"
-                    disabled={postData.images.length >= config.maxFiles}
-                  />
-                </label>
-              </p>
-              <p className="text-sm text-gray-400">
-                {contentType === 'video' 
-                  ? 'Images up to 10MB, Videos up to 100MB'
-                  : 'PNG, JPG, GIF, WebP up to 10MB each'
-                }
-              </p>
-            </div>
-
-            {validationErrors.media && (
-              <p className="mt-1 text-sm text-red-600">{validationErrors.media}</p>
-            )}
-
-            {/* File Preview */}
-            {postData.images.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {postData.images.map((media) => (
-                  <div key={media.id} className="relative group">
-                    {media.type.startsWith('video/') ? (
-                      <video
-                        src={media.url}
-                        className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                        controls={false}
-                        muted
-                      />
-                    ) : (
-                      <img
-                        src={media.url}
-                        alt={media.name}
-                        className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                      />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeImage(media.id)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg truncate">
-                      {media.type.startsWith('video/') && (
-                        <Video className="inline w-3 h-3 mr-1" />
-                      )}
-                      {media.name}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Optional fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -765,7 +908,14 @@ const CreatePost = () => {
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
-                {isSubmitting ? 'Publishing...' : `Publish ${contentType === 'post' ? 'Post' : contentType.charAt(0).toUpperCase() + contentType.slice(1)}`}
+                {isSubmitting ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Publishing...
+                  </div>
+                ) : (
+                  `Publish ${contentType === 'post' ? 'Post' : contentType.charAt(0).toUpperCase() + contentType.slice(1)}`
+                )}
               </button>
             </div>
           </div>

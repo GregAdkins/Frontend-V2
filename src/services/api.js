@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 60000, // Increased timeout for video uploads
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,6 +19,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Set appropriate content type for file uploads
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']; // Let browser set it
+    }
+    
     return config;
   },
   (error) => {
@@ -157,7 +163,7 @@ export const usersAPI = {
   }
 };
 
-// Posts API endpoints - Simplified for integer IDs and slugs
+// Posts API endpoints with enhanced video support
 export const postsAPI = {
   // Get all posts with filtering
   getAllPosts: async (page = 1, filters = {}) => {
@@ -177,27 +183,35 @@ export const postsAPI = {
     }
   },
   
-  // Get posts by content type
-  getPostsByType: async (contentType, page = 1) => {
-    try {
-      const response = await api.get(`/posts/${contentType}s/?page=${page}`);
-      return response.data;
-    } catch (error) {
-      console.error('Get posts by type error:', error);
-      throw error;
-    }
-  },
-  
-  // Create post
+  // Create post with enhanced file upload support
   createPost: async (postData) => {
     try {
       console.log('Creating post with data type:', postData instanceof FormData ? 'FormData' : 'JSON');
       
-      const response = await api.post('/posts/', postData, {
+      // Log FormData contents for debugging
+      if (postData instanceof FormData) {
+        console.log('FormData contents:');
+        for (let [key, value] of postData.entries()) {
+          if (value instanceof File) {
+            console.log(`${key}: File - ${value.name} (${value.size} bytes, ${value.type})`);
+          } else {
+            console.log(`${key}: ${value}`);
+          }
+        }
+      }
+      
+      const config = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-      });
+        timeout: 120000, // 2 minutes timeout for large video uploads
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`Upload Progress: ${percentCompleted}%`);
+        },
+      };
+      
+      const response = await api.post('/posts/', postData, config);
       
       console.log('Post created successfully:', response.data);
       return response.data;
@@ -207,16 +221,38 @@ export const postsAPI = {
         data: error.response?.data,
         message: error.message
       });
+      
+      // Enhanced error handling for file upload issues
+      if (error.response?.status === 413) {
+        throw new Error('File too large. Please reduce file size and try again.');
+      } else if (error.response?.status === 415) {
+        throw new Error('Unsupported file format. Please check file requirements.');
+      } else if (error.code === 'ECONNABORTED') {
+        throw new Error('Upload timeout. Please try again with a smaller file.');
+      }
+      
       throw error;
     }
   },
   
-  // Get single post (by slug)
+  // Get single post (by slug) with media URLs
   getPost: async (slug) => {
     try {
       console.log('Fetching post with slug:', slug);
       const response = await api.get(`/posts/${slug}/`);
-      return response.data;
+      
+      // Ensure we have proper URL fields
+      const post = response.data;
+      console.log('Post data received:', {
+        id: post.id,
+        title: post.title,
+        content_type: post.content_type,
+        has_image: !!post.image_url,
+        has_video: !!post.video_url,
+        has_thumbnail: !!post.video_thumbnail_url
+      });
+      
+      return post;
     } catch (error) {
       console.error('Get post error:', error);
       throw error;
@@ -226,11 +262,13 @@ export const postsAPI = {
   // Update post
   updatePost: async (slug, postData) => {
     try {
-      const response = await api.patch(`/posts/${slug}/`, postData, {
-        headers: {
-          'Content-Type': postData instanceof FormData ? 'multipart/form-data' : 'application/json',
-        },
-      });
+      const config = {};
+      if (postData instanceof FormData) {
+        config.headers = { 'Content-Type': 'multipart/form-data' };
+        config.timeout = 120000; // Extended timeout for media uploads
+      }
+      
+      const response = await api.patch(`/posts/${slug}/`, postData, config);
       return response.data;
     } catch (error) {
       console.error('Update post error:', error);
@@ -296,7 +334,7 @@ export const postsAPI = {
     return response.data;
   },
   
-  // Enhanced search
+  // Enhanced search with video support
   searchPosts: async (query, filters = {}, page = 1) => {
     try {
       let url = `/posts/search/?q=${encodeURIComponent(query)}&page=${page}`;
@@ -304,6 +342,8 @@ export const postsAPI = {
       if (filters.content_type) url += `&content_type=${filters.content_type}`;
       if (filters.author) url += `&author=${filters.author}`;
       if (filters.tags) url += `&tags=${encodeURIComponent(filters.tags)}`;
+      if (filters.has_video !== undefined) url += `&has_video=${filters.has_video}`;
+      if (filters.has_image !== undefined) url += `&has_image=${filters.has_image}`;
       
       const response = await api.get(url);
       return response.data;
@@ -333,22 +373,6 @@ export const postsAPI = {
     }
   },
   
-  // Bulk operations
-  bulkDeletePosts: async (postIds) => {
-    const response = await api.post('/posts/bulk/delete/', {
-      post_ids: postIds
-    });
-    return response.data;
-  },
-  
-  bulkUpdateStatus: async (postIds, status) => {
-    const response = await api.post('/posts/bulk/update-status/', {
-      post_ids: postIds,
-      status: status
-    });
-    return response.data;
-  },
-  
   // Comments
   getComments: async (postId, page = 1) => {
     try {
@@ -370,26 +394,37 @@ export const postsAPI = {
     }
   },
   
-  getCommentReplies: async (commentId) => {
-    const response = await api.get(`/posts/comments/${commentId}/replies/`);
-    return response.data;
-  },
-  
-  // Content type specific helpers
+  // Content type specific helpers with video support
   getImagePosts: async (page = 1) => {
-    return postsAPI.getPostsByType('image', page);
+    return postsAPI.getAllPosts(page, { content_type: 'image' });
   },
   
   getVideoPosts: async (page = 1) => {
-    return postsAPI.getPostsByType('video', page);
+    return postsAPI.getAllPosts(page, { content_type: 'video' });
   },
   
   getStoryPosts: async (page = 1) => {
-    return postsAPI.getPostsByType('story', page);
+    return postsAPI.getAllPosts(page, { content_type: 'story' });
   },
   
   getWorkflowPosts: async (page = 1) => {
-    return postsAPI.getPostsByType('workflow', page);
+    return postsAPI.getAllPosts(page, { content_type: 'workflow' });
+  },
+
+  // Bulk operations
+  bulkDeletePosts: async (postIds) => {
+    const response = await api.post('/posts/bulk/delete/', {
+      post_ids: postIds
+    });
+    return response.data;
+  },
+  
+  bulkUpdateStatus: async (postIds, status) => {
+    const response = await api.post('/posts/bulk/update-status/', {
+      post_ids: postIds,
+      status: status
+    });
+    return response.data;
   }
 };
 
@@ -409,57 +444,115 @@ export const postUtils = {
       return `/post/${post.id}`;
     }
     return '/';
+  },
+  
+  // Check if post has video content
+  hasVideo: (post) => {
+    return !!(post.video_url || post.content_type === 'video');
+  },
+  
+  // Check if post has image content
+  hasImage: (post) => {
+    return !!(post.image_url || post.content_type === 'image');
+  },
+  
+  // Get appropriate media URL for display
+  getMediaUrl: (post, preferVideo = false) => {
+    if (preferVideo && post.video_url) {
+      return post.video_url;
+    }
+    if (post.image_url) {
+      return post.image_url;
+    }
+    if (post.video_thumbnail_url) {
+      return post.video_thumbnail_url;
+    }
+    return null;
+  },
+  
+  // Get thumbnail URL (for video posts, prefer thumbnail over video)
+  getThumbnailUrl: (post) => {
+    if (post.video_thumbnail_url) {
+      return post.video_thumbnail_url;
+    }
+    if (post.image_url) {
+      return post.image_url;
+    }
+    return null;
   }
 };
 
-// Content type utilities
+// Content type utilities with video validation
 export const contentTypeUtils = {
-  // Validate file type on frontend
+  // Enhanced file validation
   validateFile: (file, contentType) => {
     const validations = {
       image: {
         types: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
         maxSize: 10 * 1024 * 1024, // 10MB
-        label: 'Image'
+        label: 'Image',
+        extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp']
       },
       video: {
-        types: ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'],
+        types: [
+          'video/mp4', 'video/webm', 'video/ogg', 
+          'video/quicktime', 'video/avi', 'video/mov'
+        ],
         maxSize: 100 * 1024 * 1024, // 100MB
-        label: 'Video'
+        label: 'Video',
+        extensions: ['mp4', 'webm', 'ogg', 'mov', 'avi']
       }
     };
     
-    const validation = validations[contentType === 'video' && file.type.startsWith('video/') ? 'video' : 'image'];
+    const fileType = contentType === 'video' && file.type.startsWith('video/') ? 'video' : 'image';
+    const validation = validations[fileType];
     
     if (!validation) {
       return { valid: false, error: 'Unknown content type' };
     }
     
-    if (!validation.types.includes(file.type)) {
-      return { 
-        valid: false, 
-        error: `Invalid ${validation.label.toLowerCase()} format. Supported: ${validation.types.join(', ')}` 
-      };
-    }
-    
+    // Check file size
     if (file.size > validation.maxSize) {
       return { 
         valid: false, 
-        error: `${validation.label} size cannot exceed ${validation.maxSize / (1024 * 1024)}MB` 
+        error: `${validation.label} size (${(file.size / (1024 * 1024)).toFixed(1)}MB) cannot exceed ${validation.maxSize / (1024 * 1024)}MB` 
       };
     }
     
-    return { valid: true };
+    // Check file type
+    const isValidType = validation.types.some(type => file.type.toLowerCase().includes(type.split('/')[1]));
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const isValidExtension = validation.extensions.includes(fileExtension);
+    
+    if (!isValidType && !isValidExtension) {
+      return { 
+        valid: false, 
+        error: `Unsupported ${validation.label.toLowerCase()} format. Supported: ${validation.extensions.map(ext => ext.toUpperCase()).join(', ')}` 
+      };
+    }
+    
+    // Warning for large files
+    const warnings = [];
+    if (file.size > validation.maxSize * 0.8) {
+      warnings.push(`Large ${validation.label.toLowerCase()} may take longer to upload`);
+    }
+    
+    return { 
+      valid: true, 
+      warnings,
+      fileType,
+      sizeMB: (file.size / (1024 * 1024)).toFixed(1)
+    };
   },
   
   // Get content type configuration
   getContentTypeConfig: (contentType) => {
     const configs = {
-      post: { label: 'Post', icon: 'FileText', color: 'blue' },
-      image: { label: 'Image', icon: 'Image', color: 'green' },
-      video: { label: 'Video', icon: 'Video', color: 'purple' },
-      story: { label: 'Story', icon: 'BookOpen', color: 'orange' },
-      workflow: { label: 'Workflow', icon: 'Workflow', color: 'red' }
+      post: { label: 'Post', icon: 'FileText', color: 'blue', supportsVideo: true, supportsImage: true },
+      image: { label: 'Image', icon: 'Image', color: 'green', supportsVideo: false, supportsImage: true },
+      video: { label: 'Video', icon: 'Video', color: 'purple', supportsVideo: true, supportsImage: true },
+      story: { label: 'Story', icon: 'BookOpen', color: 'orange', supportsVideo: false, supportsImage: true },
+      workflow: { label: 'Workflow', icon: 'Workflow', color: 'red', supportsVideo: false, supportsImage: true }
     };
     
     return configs[contentType] || configs.post;
@@ -505,15 +598,19 @@ export const apiErrorHandler = {
     return { general: error.message || 'An unexpected error occurred' };
   },
   
-  // Get user-friendly error message
+  // Get user-friendly error message with file upload context
   getUserFriendlyMessage: (error) => {
     const errors = apiErrorHandler.parseValidationErrors(error);
     
     // Priority order for displaying errors
-    const priorityFields = ['general', 'detail', 'non_field_errors', 'title', 'content', 'image', 'video'];
+    const priorityFields = ['general', 'detail', 'non_field_errors', 'image', 'video', 'title', 'content'];
     
     for (const field of priorityFields) {
       if (errors[field]) {
+        // Enhance file upload error messages
+        if (field === 'image' || field === 'video') {
+          return `${field.charAt(0).toUpperCase() + field.slice(1)} upload error: ${errors[field]}`;
+        }
         return errors[field];
       }
     }

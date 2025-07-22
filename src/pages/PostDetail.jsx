@@ -1,9 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, MessageCircle, Share, Bookmark, MoreHorizontal, Loader, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share, Bookmark, MoreHorizontal, Loader, AlertCircle, Play } from 'lucide-react';
 import { postsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import CommentSection from '../components/post/CommentSection';
+
+// Simple Video Player Component (inline to avoid import issues)
+const VideoPlayer = ({ src, poster, className = '', controls = true, autoplay = false }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  if (!src) {
+    return (
+      <div className={`bg-gray-100 flex items-center justify-center ${className}`}>
+        <p className="text-gray-500">No video source provided</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative group ${className}`}>
+      <video
+        className="w-full h-full object-cover rounded-lg"
+        poster={poster}
+        controls={controls}
+        autoPlay={autoplay}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onError={() => setHasError(true)}
+        onLoadStart={() => setHasError(false)}
+      >
+        <source src={src} type="video/mp4" />
+        <source src={src} type="video/webm" />
+        <source src={src} type="video/ogg" />
+        Your browser does not support the video tag.
+      </video>
+
+      {hasError && (
+        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center rounded-lg">
+          <div className="text-center text-white">
+            <div className="text-4xl mb-2">⚠️</div>
+            <p className="text-sm">Unable to load video</p>
+            <button 
+              onClick={() => {
+                setHasError(false);
+                // Try to reload the video
+                const video = document.querySelector('video');
+                if (video) video.load();
+              }}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const PostDetail = () => {
   const { slug } = useParams();
@@ -33,6 +87,8 @@ const PostDetail = () => {
       setLikesCount(response.likes_count || 0);
       setSharesCount(response.shares_count || 0);
       setCommentsCount(response.comments_count || 0);
+      setIsLiked(response.is_liked || false);
+      setIsBookmarked(response.is_bookmarked || false);
     } catch (error) {
       console.error('Error fetching post:', error);
       if (error.response?.status === 404) {
@@ -71,8 +127,13 @@ const PostDetail = () => {
     }
   };
 
-  const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked);
+  const handleBookmark = async () => {
+    try {
+      await postsAPI.bookmarkPost(post.id);
+      setIsBookmarked(!isBookmarked);
+    } catch (error) {
+      console.error('Error bookmarking post:', error);
+    }
   };
 
   const handleCommentAdded = () => {
@@ -88,6 +149,76 @@ const PostDetail = () => {
     if (diffInHours < 24) return `${diffInHours}h ago`;
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
     return date.toLocaleDateString();
+  };
+
+  const renderMedia = () => {
+    if (!post) return null;
+
+    // Check if post has video
+    if (post.video_url || post.content_type === 'video') {
+      return (
+        <div className="mb-6">
+          <VideoPlayer
+            src={post.video_url}
+            poster={post.video_thumbnail_url || post.image_url}
+            className="w-full max-h-96 rounded-lg overflow-hidden"
+            controls={true}
+            autoplay={false}
+          />
+          {post.title && (
+            <p className="text-sm text-gray-600 mt-2 text-center">{post.title}</p>
+          )}
+        </div>
+      );
+    }
+    
+    // Check if post has image
+    if (post.image_url || post.image) {
+      return (
+        <div className="mb-6">
+          <img 
+            src={post.image_url || post.image}
+            alt={post.title || 'Post image'}
+            className="w-full max-h-96 object-cover rounded-lg"
+            onError={(e) => {
+              e.target.src = '/api/placeholder/800/600';
+            }}
+          />
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const renderWorkflowSteps = () => {
+    if (post.content_type !== 'workflow' || !post.workflow_steps_parsed) return null;
+
+    return (
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Workflow Steps</h3>
+        <div className="space-y-4">
+          {post.workflow_steps_parsed.map((step, index) => (
+            <div key={index} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-medium text-gray-900 mb-2">{step.title}</h4>
+                  <p className="text-gray-600 text-sm">{step.description}</p>
+                  {step.duration && (
+                    <span className="inline-block mt-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                      Duration: {step.duration}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -162,7 +293,14 @@ const PostDetail = () => {
                     </div>
                   )}
                 </div>
-                <p className="text-gray-500 text-sm">{formatTimestamp(post.created_at)}</p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-gray-500 text-sm">{formatTimestamp(post.created_at)}</p>
+                  {post.content_type !== 'post' && (
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full uppercase font-medium">
+                      {post.content_type}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <button className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -185,14 +323,29 @@ const PostDetail = () => {
             </div>
           )}
           
-          {post.image && (
-            <div className="mb-6">
-              <img 
-                src={post.image} 
-                alt={post.title || 'Post image'}
-                className="w-full max-h-96 object-cover rounded-lg"
-              />
+          {/* Media Content */}
+          {renderMedia()}
+
+          {/* Workflow Steps */}
+          {renderWorkflowSteps()}
+
+          {/* Tags */}
+          {post.tags_list && post.tags_list.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {post.tags_list.map((tag, index) => (
+                <span 
+                  key={index}
+                  className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-full cursor-pointer hover:bg-blue-100"
+                >
+                  #{tag}
+                </span>
+              ))}
             </div>
+          )}
+
+          {/* Location */}
+          {post.location && (
+            <p className="text-gray-500 text-sm mb-4">📍 {post.location}</p>
           )}
         </div>
 

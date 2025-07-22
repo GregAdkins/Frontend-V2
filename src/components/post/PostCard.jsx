@@ -1,7 +1,40 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share, Bookmark, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share, Bookmark, MoreHorizontal, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { postsAPI } from '../../services/api';
+
+// Simple Video Player Component for PostCard
+const SimpleVideoPlayer = ({ src, poster, className = '' }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (!src) return null;
+
+  return (
+    <div className={`relative ${className}`}>
+      <video
+        className="w-full h-full object-cover rounded-lg"
+        poster={poster}
+        controls
+        onError={() => setHasError(true)}
+        onLoadStart={() => setHasError(false)}
+      >
+        <source src={src} type="video/mp4" />
+        <source src={src} type="video/webm" />
+        <source src={src} type="video/ogg" />
+        Your browser does not support the video tag.
+      </video>
+
+      {hasError && (
+        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center rounded-lg">
+          <div className="text-center text-white">
+            <div className="text-2xl mb-1">⚠️</div>
+            <p className="text-xs">Unable to load video</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const PostCard = ({ post }) => {
   const navigate = useNavigate();
@@ -9,6 +42,7 @@ const PostCard = ({ post }) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [sharesCount, setSharesCount] = useState(post.shares_count || 0);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
   const handleLike = async () => {
     try {
@@ -38,16 +72,13 @@ const PostCard = ({ post }) => {
   };
 
   const handleComment = () => {
-    // Navigate to post detail page when comment button is clicked
     navigate(`/post/${post.slug}`);
   };
 
   const handlePostClick = () => {
-    // Navigate to post detail page when title or image is clicked
     navigate(`/post/${post.slug}`);
   };
 
-  // Format timestamp
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -58,10 +89,76 @@ const PostCard = ({ post }) => {
     return date.toLocaleDateString();
   };
 
-  // Create user object for display
   const displayUser = {
     name: post.author || 'Unknown User',
-    verified: false // Django backend doesn't have verified field
+    verified: false,
+    username: post.author || 'unknown'
+  };
+
+  const renderMedia = () => {
+    // Check if post has video
+    if (post.video_url || post.content_type === 'video') {
+      return (
+        <div className="mb-4">
+          {showVideoPlayer ? (
+            // Show full video player in card
+            <SimpleVideoPlayer
+              src={post.video_url}
+              poster={post.video_thumbnail_url || post.image_url}
+              className="w-full h-48 sm:h-64 rounded-lg overflow-hidden"
+            />
+          ) : (
+            // Show video thumbnail with play button overlay
+            <div 
+              className="relative rounded-lg overflow-hidden cursor-pointer group"
+              onClick={() => setShowVideoPlayer(true)}
+            >
+              <img 
+                src={post.video_thumbnail_url || post.image_url || '/api/placeholder/600/400'}
+                alt={post.title || 'Video thumbnail'}
+                className="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  e.target.src = '/api/placeholder/600/400';
+                }}
+              />
+              {/* Play button overlay */}
+              <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center group-hover:bg-opacity-50 transition-all">
+                <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 group-hover:scale-110 transition-all">
+                  <Play className="w-8 h-8 text-gray-800 ml-1" fill="currentColor" />
+                </div>
+              </div>
+              {/* Video indicator */}
+              <div className="absolute top-3 right-3 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-medium">
+                VIDEO
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Check if post has image
+    if (post.image_url || post.image) {
+      return (
+        <div className="mb-4">
+          <div 
+            className="rounded-lg overflow-hidden cursor-pointer" 
+            onClick={handlePostClick}
+          >
+            <img 
+              src={post.image_url || post.image}
+              alt={post.title || 'Post image'}
+              className="w-full h-48 sm:h-64 object-cover hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                e.target.src = '/api/placeholder/600/400';
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -83,7 +180,14 @@ const PostCard = ({ post }) => {
                 </div>
               )}
             </div>
-            <span className="text-gray-500 text-sm">{formatTimestamp(post.created_at)}</span>
+            <div className="flex items-center space-x-2">
+              <span className="text-gray-500 text-sm">{formatTimestamp(post.created_at)}</span>
+              {post.content_type !== 'post' && (
+                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full uppercase font-medium">
+                  {post.content_type}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <button 
@@ -125,18 +229,25 @@ const PostCard = ({ post }) => {
           </div>
         )}
         
-        {post.image && (
-          <div className="mb-4">
-            <div 
-              className="rounded-lg overflow-hidden cursor-pointer" 
-              onClick={handlePostClick}
-            >
-              <img 
-                src={post.image} 
-                alt={post.title || 'Post image'}
-                className="w-full h-48 sm:h-64 object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
+        {/* Media Content */}
+        {renderMedia()}
+
+        {/* Tags */}
+        {post.tags_list && post.tags_list.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {post.tags_list.slice(0, 3).map((tag, index) => (
+              <span 
+                key={index}
+                className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full cursor-pointer hover:bg-blue-100"
+              >
+                #{tag}
+              </span>
+            ))}
+            {post.tags_list.length > 3 && (
+              <span className="text-xs text-gray-500">
+                +{post.tags_list.length - 3} more
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -147,16 +258,16 @@ const PostCard = ({ post }) => {
           <button 
             onClick={handleLike}
             className={`flex items-center transition-colors ${
-              isLiked ? 'text-red-500' : 'text-gray-500 hover:text-gray-700'
+              isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
             }`}
           >
-            <Heart className="w-5 h-5 mr-1" />
+            <Heart className={`w-5 h-5 mr-1 ${isLiked ? 'fill-current' : ''}`} />
             {likesCount > 0 && <span className="text-sm">{likesCount}</span>}
           </button>
           
           <button 
             onClick={handleComment}
-            className="flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+            className="flex items-center text-gray-500 hover:text-blue-500 transition-colors"
           >
             <MessageCircle className="w-5 h-5 mr-1" />
             {post.comments_count > 0 && <span className="text-sm">{post.comments_count}</span>}
@@ -164,7 +275,7 @@ const PostCard = ({ post }) => {
           
           <button 
             onClick={handleShare}
-            className="flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+            className="flex items-center text-gray-500 hover:text-green-500 transition-colors"
           >
             <Share className="w-5 h-5 mr-1" />
             {sharesCount > 0 && <span className="text-sm">{sharesCount}</span>}
@@ -174,10 +285,10 @@ const PostCard = ({ post }) => {
         <button 
           onClick={handleBookmark}
           className={`flex items-center transition-colors ${
-            isBookmarked ? 'text-yellow-500' : 'text-gray-500 hover:text-gray-700'
+            isBookmarked ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
           }`}
         >
-          <Bookmark className="w-5 h-5" />
+          <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
         </button>
       </div>
     </div>
