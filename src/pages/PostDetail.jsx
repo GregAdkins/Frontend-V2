@@ -1,63 +1,10 @@
+// Frontend fallback fix for PostDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, MessageCircle, Share, Bookmark, MoreHorizontal, Loader, AlertCircle, Play } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share, Bookmark, MoreHorizontal, Loader, AlertCircle } from 'lucide-react';
 import { postsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import CommentSection from '../components/post/CommentSection';
-
-// Simple Video Player Component (inline to avoid import issues)
-const VideoPlayer = ({ src, poster, className = '', controls = true, autoplay = false }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [hasError, setHasError] = useState(false);
-
-  if (!src) {
-    return (
-      <div className={`bg-gray-100 flex items-center justify-center ${className}`}>
-        <p className="text-gray-500">No video source provided</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`relative group ${className}`}>
-      <video
-        className="w-full h-full object-cover rounded-lg"
-        poster={poster}
-        controls={controls}
-        autoPlay={autoplay}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onError={() => setHasError(true)}
-        onLoadStart={() => setHasError(false)}
-      >
-        <source src={src} type="video/mp4" />
-        <source src={src} type="video/webm" />
-        <source src={src} type="video/ogg" />
-        Your browser does not support the video tag.
-      </video>
-
-      {hasError && (
-        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center rounded-lg">
-          <div className="text-center text-white">
-            <div className="text-4xl mb-2">⚠️</div>
-            <p className="text-sm">Unable to load video</p>
-            <button 
-              onClick={() => {
-                setHasError(false);
-                // Try to reload the video
-                const video = document.querySelector('video');
-                if (video) video.load();
-              }}
-              className="mt-2 px-4 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const PostDetail = () => {
   const { slug } = useParams();
@@ -83,6 +30,16 @@ const PostDetail = () => {
       setLoading(true);
       setError('');
       const response = await postsAPI.getPost(slug);
+      
+      console.log('PostDetail - Fetched post:', {
+        id: response.id,
+        title: response.title,
+        backend_content_type: response.content_type,
+        video_url: response.video_url,
+        image_url: response.image_url,
+        video_thumbnail_url: response.video_thumbnail_url
+      });
+      
       setPost(response);
       setLikesCount(response.likes_count || 0);
       setSharesCount(response.shares_count || 0);
@@ -116,7 +73,6 @@ const PostDetail = () => {
       await postsAPI.sharePost(post.id);
       setSharesCount(prev => prev + 1);
       
-      // Copy link to clipboard
       const postUrl = window.location.href;
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(postUrl);
@@ -151,29 +107,83 @@ const PostDetail = () => {
     return date.toLocaleDateString();
   };
 
+  // SMART CONTENT TYPE DETECTION - Frontend fallback
+  const getActualContentType = () => {
+    if (!post) return 'post';
+    
+    // If backend says it's video but has no video_url, it's probably an image
+    if (post.content_type === 'video' && !post.video_url && (post.image_url || post.image)) {
+      console.log(`Post ${post.id}: Backend says 'video' but no video_url found, treating as image`);
+      return 'image';
+    }
+    
+    // If backend says it's video and has video_url, it's actually video
+    if (post.content_type === 'video' && post.video_url) {
+      return 'video';
+    }
+    
+    // If it has image but content_type is wrong, detect as image
+    if ((post.image_url || post.image) && !post.video_url) {
+      return 'image';
+    }
+    
+    // Default to backend content_type
+    return post.content_type;
+  };
+
+  const actualContentType = post ? getActualContentType() : 'post';
+
+  // Function to determine if this is actually a video post
+  const isVideoPost = () => {
+    return actualContentType === 'video' && post?.video_url;
+  };
+
+  // Function to determine if this is an image post
+  const isImagePost = () => {
+    return actualContentType === 'image' && (post?.image_url || post?.image);
+  };
+
   const renderMedia = () => {
     if (!post) return null;
 
-    // Check if post has video
-    if (post.video_url || post.content_type === 'video') {
+    console.log('PostDetail Media Debug:', {
+      id: post.id,
+      backend_content_type: post.content_type,
+      actual_content_type: actualContentType,
+      video_url: post.video_url,
+      image_url: post.image_url,
+      isVideoPost: isVideoPost(),
+      isImagePost: isImagePost()
+    });
+
+    // ONLY show video player if it's actually a video post with video_url
+    if (isVideoPost()) {
       return (
         <div className="mb-6">
-          <VideoPlayer
-            src={post.video_url}
-            poster={post.video_thumbnail_url || post.image_url}
-            className="w-full max-h-96 rounded-lg overflow-hidden"
-            controls={true}
-            autoplay={false}
-          />
+          <div className="w-full max-h-96 rounded-lg overflow-hidden">
+            <video
+              className="w-full h-full object-cover"
+              controls
+              poster={post.video_thumbnail_url || post.image_url}
+              onError={(e) => {
+                console.error('Video failed to load in detail view:', post.video_url);
+              }}
+            >
+              <source src={post.video_url} type="video/mp4" />
+              <source src={post.video_url} type="video/webm" />
+              <source src={post.video_url} type="video/ogg" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
           {post.title && (
-            <p className="text-sm text-gray-600 mt-2 text-center">{post.title}</p>
+            <p className="text-sm text-gray-600 mt-2 text-center">Video: {post.title}</p>
           )}
         </div>
       );
     }
     
-    // Check if post has image
-    if (post.image_url || post.image) {
+    // Show regular image for image posts
+    if (isImagePost()) {
       return (
         <div className="mb-6">
           <img 
@@ -181,18 +191,41 @@ const PostDetail = () => {
             alt={post.title || 'Post image'}
             className="w-full max-h-96 object-cover rounded-lg"
             onError={(e) => {
+              console.error('Image failed to load:', e.target.src);
               e.target.src = '/api/placeholder/800/600';
             }}
           />
+          {post.title && (
+            <p className="text-sm text-gray-600 mt-2 text-center">{post.title}</p>
+          )}
         </div>
       );
     }
 
+    // Show a message if backend content type is wrong
+    if (post.content_type === 'video' && !post.video_url) {
+      return (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="text-center text-yellow-800">
+            <div className="text-2xl mb-2">⚠️</div>
+            <p className="text-sm">Content type mismatch detected</p>
+            <p className="text-xs mt-1">
+              Backend says this is a video post, but no video file is available.
+              {(post.image_url || post.image) && (
+                <span> An image is available though.</span>
+              )}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // No media to show
     return null;
   };
 
   const renderWorkflowSteps = () => {
-    if (post.content_type !== 'workflow' || !post.workflow_steps_parsed) return null;
+    if (actualContentType !== 'workflow' || !post?.workflow_steps_parsed) return null;
 
     return (
       <div className="mb-6">
@@ -295,9 +328,12 @@ const PostDetail = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <p className="text-gray-500 text-sm">{formatTimestamp(post.created_at)}</p>
-                  {post.content_type !== 'post' && (
+                  {actualContentType !== 'post' && (
                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full uppercase font-medium">
-                      {post.content_type}
+                      {actualContentType}
+                      {actualContentType !== post.content_type && (
+                        <span className="ml-1 text-red-500" title={`Backend says: ${post.content_type}`}>*</span>
+                      )}
                     </span>
                   )}
                 </div>

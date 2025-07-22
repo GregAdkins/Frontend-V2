@@ -3,39 +3,6 @@ import { Heart, MessageCircle, Share, Bookmark, MoreHorizontal, Play } from 'luc
 import { useNavigate } from 'react-router-dom';
 import { postsAPI } from '../../services/api';
 
-// Simple Video Player Component for PostCard
-const SimpleVideoPlayer = ({ src, poster, className = '' }) => {
-  const [hasError, setHasError] = useState(false);
-
-  if (!src) return null;
-
-  return (
-    <div className={`relative ${className}`}>
-      <video
-        className="w-full h-full object-cover rounded-lg"
-        poster={poster}
-        controls
-        onError={() => setHasError(true)}
-        onLoadStart={() => setHasError(false)}
-      >
-        <source src={src} type="video/mp4" />
-        <source src={src} type="video/webm" />
-        <source src={src} type="video/ogg" />
-        Your browser does not support the video tag.
-      </video>
-
-      {hasError && (
-        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center rounded-lg">
-          <div className="text-center text-white">
-            <div className="text-2xl mb-1">⚠️</div>
-            <p className="text-xs">Unable to load video</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const PostCard = ({ post }) => {
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
@@ -67,10 +34,6 @@ const PostCard = ({ post }) => {
     setIsBookmarked(!isBookmarked);
   };
 
-  const handleMenuClick = () => {
-    console.log('Menu clicked for post:', post.id);
-  };
-
   const handleComment = () => {
     navigate(`/post/${post.slug}`);
   };
@@ -95,39 +58,91 @@ const PostCard = ({ post }) => {
     username: post.author || 'unknown'
   };
 
+  // SMART CONTENT TYPE DETECTION - Frontend fallback
+  const getActualContentType = () => {
+    // If backend says it's video but has no video_url, it's probably an image
+    if (post.content_type === 'video' && !post.video_url && (post.image_url || post.image)) {
+      console.log(`Post ${post.id}: Backend says 'video' but no video_url found, treating as image`);
+      return 'image';
+    }
+    
+    // If backend says it's video and has video_url, it's actually video
+    if (post.content_type === 'video' && post.video_url) {
+      return 'video';
+    }
+    
+    // If it has image but content_type is wrong, detect as image
+    if ((post.image_url || post.image) && !post.video_url) {
+      return 'image';
+    }
+    
+    // Default to backend content_type
+    return post.content_type;
+  };
+
+  const actualContentType = getActualContentType();
+
+  // Function to determine if this is actually a video post
+  const isVideoPost = () => {
+    return actualContentType === 'video' && post.video_url;
+  };
+
+  // Function to determine if this is an image post
+  const isImagePost = () => {
+    return actualContentType === 'image' && (post.image_url || post.image);
+  };
+
   const renderMedia = () => {
-    // Check if post has video
-    if (post.video_url || post.content_type === 'video') {
+    console.log('PostCard Debug:', {
+      id: post.id,
+      backend_content_type: post.content_type,
+      actual_content_type: actualContentType,
+      has_video_url: !!post.video_url,
+      has_image_url: !!post.image_url,
+      has_image: !!post.image,
+      isVideoPost: isVideoPost(),
+      isImagePost: isImagePost()
+    });
+
+    // ONLY show video interface if it's actually a video post with video_url
+    if (isVideoPost()) {
       return (
         <div className="mb-4">
           {showVideoPlayer ? (
-            // Show full video player in card
-            <SimpleVideoPlayer
-              src={post.video_url}
-              poster={post.video_thumbnail_url || post.image_url}
-              className="w-full h-48 sm:h-64 rounded-lg overflow-hidden"
-            />
+            // Show actual video player
+            <div className="w-full h-48 sm:h-64 rounded-lg overflow-hidden">
+              <video
+                className="w-full h-full object-cover"
+                controls
+                poster={post.video_thumbnail_url || post.image_url}
+                onError={(e) => {
+                  console.error('Video failed to load:', post.video_url);
+                }}
+              >
+                <source src={post.video_url} type="video/mp4" />
+                <source src={post.video_url} type="video/webm" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
           ) : (
-            // Show video thumbnail with play button overlay
+            // Show video thumbnail with play button
             <div 
               className="relative rounded-lg overflow-hidden cursor-pointer group"
               onClick={() => setShowVideoPlayer(true)}
             >
               <img 
                 src={post.video_thumbnail_url || post.image_url || '/api/placeholder/600/400'}
-                alt={post.title || 'Video thumbnail'}
+                alt="Video thumbnail"
                 className="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                 onError={(e) => {
                   e.target.src = '/api/placeholder/600/400';
                 }}
               />
-              {/* Play button overlay */}
               <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center group-hover:bg-opacity-50 transition-all">
                 <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 group-hover:scale-110 transition-all">
                   <Play className="w-8 h-8 text-gray-800 ml-1" fill="currentColor" />
                 </div>
               </div>
-              {/* Video indicator */}
               <div className="absolute top-3 right-3 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-medium">
                 VIDEO
               </div>
@@ -137,8 +152,8 @@ const PostCard = ({ post }) => {
       );
     }
     
-    // Check if post has image
-    if (post.image_url || post.image) {
+    // Show regular image for image posts or posts with images
+    if (isImagePost()) {
       return (
         <div className="mb-4">
           <div 
@@ -150,6 +165,7 @@ const PostCard = ({ post }) => {
               alt={post.title || 'Post image'}
               className="w-full h-48 sm:h-64 object-cover hover:scale-105 transition-transform duration-300"
               onError={(e) => {
+                console.error('Image failed to load:', e.target.src);
                 e.target.src = '/api/placeholder/600/400';
               }}
             />
@@ -158,6 +174,7 @@ const PostCard = ({ post }) => {
       );
     }
 
+    // No media to show
     return null;
   };
 
@@ -182,16 +199,19 @@ const PostCard = ({ post }) => {
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-gray-500 text-sm">{formatTimestamp(post.created_at)}</span>
-              {post.content_type !== 'post' && (
+              {actualContentType !== 'post' && (
                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full uppercase font-medium">
-                  {post.content_type}
+                  {actualContentType}
+                  {actualContentType !== post.content_type && (
+                    <span className="ml-1 text-red-500" title={`Backend says: ${post.content_type}`}>*</span>
+                  )}
                 </span>
               )}
             </div>
           </div>
         </div>
         <button 
-          onClick={handleMenuClick}
+          onClick={() => console.log('Menu clicked for post:', post.id)}
           className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
         >
           <MoreHorizontal className="w-5 h-5" />
