@@ -4,13 +4,15 @@ import { CheckCircle, AlertCircle, Loader, Mail } from 'lucide-react';
 
 const EmailVerification = () => {
   const [searchParams] = useSearchParams();
-  const [verificationStatus, setVerificationStatus] = useState('loading'); // loading, success, error
+  const [verificationStatus, setVerificationStatus] = useState('loading');
   const [message, setMessage] = useState('');
   const [isResending, setIsResending] = useState(false);
   const [email, setEmail] = useState('');
 
   useEffect(() => {
     const token = searchParams.get('token');
+    console.log('Verification token from URL:', token);
+    
     if (token) {
       verifyEmail(token);
     } else {
@@ -21,6 +23,8 @@ const EmailVerification = () => {
 
   const verifyEmail = async (token) => {
     try {
+      console.log('Sending verification request with token:', token);
+      
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/account/verify-email/`, {
         method: 'POST',
         headers: {
@@ -30,15 +34,34 @@ const EmailVerification = () => {
       });
 
       const data = await response.json();
+      console.log('Verification response:', { status: response.status, data });
 
       if (response.ok) {
-        setVerificationStatus('success');
-        setMessage(data.message || 'Email verified successfully! You can now log in.');
+        if (data.message && data.message.includes('already verified')) {
+          setVerificationStatus('already_verified');
+          setMessage('Your email is already verified! You can now log in to your account.');
+        } else {
+          setVerificationStatus('success');
+          setMessage(data.message || 'Email verified successfully! You can now log in.');
+        }
       } else {
         setVerificationStatus('error');
-        setMessage(data.error || 'Email verification failed. Please try again.');
+        
+        // Handle specific error cases
+        if (data.error) {
+          if (data.error.includes('expired')) {
+            setMessage('Your verification link has expired. Please request a new verification email below.');
+          } else if (data.error.includes('Invalid') || data.error.includes('invalid')) {
+            setMessage('This verification link is invalid or has already been used. If your email is not verified, please request a new verification email below.');
+          } else {
+            setMessage(data.error);
+          }
+        } else {
+          setMessage('Email verification failed. Please try again or request a new verification email.');
+        }
       }
     } catch (error) {
+      console.error('Verification network error:', error);
       setVerificationStatus('error');
       setMessage('Network error. Please check your connection and try again.');
     }
@@ -52,23 +75,27 @@ const EmailVerification = () => {
 
     setIsResending(true);
     try {
+      console.log('Resending verification email to:', email);
+      
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/account/resend-verification/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
 
       const data = await response.json();
+      console.log('Resend response:', { status: response.status, data });
 
       if (response.ok) {
-        alert(data.message || 'Verification email sent successfully!');
+        alert(data.message || 'Verification email sent successfully! Please check your inbox.');
         setEmail('');
       } else {
-        alert(data.error || 'Failed to send verification email.');
+        alert(data.error || 'Failed to send verification email. Please try again.');
       }
     } catch (error) {
+      console.error('Resend network error:', error);
       alert('Network error. Please try again.');
     } finally {
       setIsResending(false);
@@ -117,17 +144,31 @@ const EmailVerification = () => {
             </div>
           )}
 
+          {verificationStatus === 'already_verified' && (
+            <div>
+              <CheckCircle className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-blue-900 mb-2">Already Verified!</h2>
+              <p className="text-blue-700 mb-6">{message}</p>
+              <Link
+                to="/login"
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-block"
+              >
+                Go to Login
+              </Link>
+            </div>
+          )}
+
           {verificationStatus === 'error' && (
             <div>
               <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-red-900 mb-2">Verification Failed</h2>
+              <h2 className="text-2xl font-bold text-red-900 mb-2">Verification Issue</h2>
               <p className="text-red-700 mb-6">{message}</p>
               
               {/* Resend verification form */}
               <div className="text-left space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Resend verification email
+                    Request new verification email
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -152,7 +193,7 @@ const EmailVerification = () => {
                       Sending...
                     </>
                   ) : (
-                    'Resend Verification Email'
+                    'Send New Verification Email'
                   )}
                 </button>
               </div>

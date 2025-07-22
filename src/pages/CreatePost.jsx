@@ -11,7 +11,9 @@ import {
   Video,
   BookOpen,
   Workflow,
-  Camera
+  Camera,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { postsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +25,11 @@ const CreatePost = () => {
   const [postData, setPostData] = useState({
     title: '',
     content: '',
+    tags: '',
+    location: '',
+    meta_description: '',
+    story_chapters: 1,
+    workflow_steps: [],
     images: [],
     contentType: contentType
   });
@@ -31,6 +38,7 @@ const CreatePost = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -44,8 +52,13 @@ const CreatePost = () => {
       color: 'text-blue-600',
       placeholderTitle: 'Give your post a catchy title...',
       placeholderContent: 'Share your thoughts, ideas, or story...',
-      acceptedFiles: 'image/*',
-      maxFiles: 5
+      acceptedFiles: 'image/*,video/*',
+      maxFiles: 5,
+      validation: {
+        titleRequired: false,
+        contentMinLength: 0,
+        mediaRequired: false
+      }
     },
     image: {
       title: 'Share Image Content',
@@ -55,7 +68,13 @@ const CreatePost = () => {
       placeholderTitle: 'Add a caption for your image...',
       placeholderContent: 'Describe your image or add context...',
       acceptedFiles: 'image/*',
-      maxFiles: 10
+      maxFiles: 10,
+      validation: {
+        titleRequired: true,
+        contentMinLength: 0,
+        mediaRequired: true,
+        mediaType: 'image'
+      }
     },
     video: {
       title: 'Share Video Content',
@@ -65,7 +84,13 @@ const CreatePost = () => {
       placeholderTitle: 'Give your video a title...',
       placeholderContent: 'Describe your video content...',
       acceptedFiles: 'video/*,image/*',
-      maxFiles: 3
+      maxFiles: 3,
+      validation: {
+        titleRequired: false,
+        contentMinLength: 0,
+        mediaRequired: true,
+        mediaType: 'video'
+      }
     },
     story: {
       title: 'Create a Story',
@@ -75,7 +100,12 @@ const CreatePost = () => {
       placeholderTitle: 'Your story title...',
       placeholderContent: 'Write your story here. Tell us what happened, what you learned, or what you want to share...',
       acceptedFiles: 'image/*',
-      maxFiles: 8
+      maxFiles: 8,
+      validation: {
+        titleRequired: true,
+        contentMinLength: 100,
+        mediaRequired: false
+      }
     },
     workflow: {
       title: 'Design Workflow',
@@ -85,7 +115,13 @@ const CreatePost = () => {
       placeholderTitle: 'Workflow name...',
       placeholderContent: 'Describe your workflow, process steps, or methodology...',
       acceptedFiles: 'image/*',
-      maxFiles: 5
+      maxFiles: 5,
+      validation: {
+        titleRequired: true,
+        contentMinLength: 0,
+        mediaRequired: false,
+        workflowStepsRequired: true
+      }
     }
   };
 
@@ -101,8 +137,14 @@ const CreatePost = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
+    // Clear errors when user starts typing
     if (error) setError('');
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const handleImageUpload = (files) => {
@@ -121,10 +163,10 @@ const CreatePost = () => {
         }
       }
       
-      // Validate file size (50MB max for videos, 10MB for images)
-      const maxSize = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+      // Validate file size (100MB max for videos, 10MB for images)
+      const maxSize = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
       if (file.size > maxSize) {
-        setError(`File size must be less than ${file.type.startsWith('video/') ? '50MB' : '10MB'}`);
+        setError(`File size must be less than ${file.type.startsWith('video/') ? '100MB' : '10MB'}`);
         return false;
       }
       return true;
@@ -177,8 +219,85 @@ const CreatePost = () => {
     }));
   };
 
+  // Workflow steps management
+  const addWorkflowStep = () => {
+    setPostData(prev => ({
+      ...prev,
+      workflow_steps: [
+        ...prev.workflow_steps,
+        { title: '', description: '', order: prev.workflow_steps.length + 1 }
+      ]
+    }));
+  };
+
+  const removeWorkflowStep = (index) => {
+    setPostData(prev => ({
+      ...prev,
+      workflow_steps: prev.workflow_steps.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateWorkflowStep = (index, field, value) => {
+    setPostData(prev => ({
+      ...prev,
+      workflow_steps: prev.workflow_steps.map((step, i) => 
+        i === index ? { ...step, [field]: value } : step
+      )
+    }));
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    const validation = config.validation;
+
+    // Title validation
+    if (validation.titleRequired && !postData.title.trim()) {
+      errors.title = 'Title is required for this content type';
+    }
+
+    // Content validation
+    if (validation.contentMinLength > 0 && postData.content.length < validation.contentMinLength) {
+      errors.content = `Content must be at least ${validation.contentMinLength} characters`;
+    }
+
+    // Media validation
+    if (validation.mediaRequired && postData.images.length === 0) {
+      errors.media = 'Media file is required for this content type';
+    }
+
+    // Workflow steps validation
+    if (validation.workflowStepsRequired) {
+      if (postData.workflow_steps.length < 2) {
+        errors.workflow_steps = 'Workflow must have at least 2 steps';
+      } else {
+        // Validate each step
+        postData.workflow_steps.forEach((step, index) => {
+          if (!step.title.trim() || !step.description.trim()) {
+            errors.workflow_steps = `Step ${index + 1} must have both title and description`;
+          }
+        });
+      }
+    }
+
+    // Tags validation
+    if (postData.tags) {
+      const tags = postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      if (tags.length > 10) {
+        errors.tags = 'Maximum 10 tags allowed';
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     
@@ -189,15 +308,31 @@ const CreatePost = () => {
       formData.append('content', postData.content.trim());
       formData.append('content_type', contentType);
       
-      // Add image/video if selected
-      if (postData.images && postData.images.length > 0) {
-        // For now, use the first file as the main media
-        formData.append('image', postData.images[0].file);
+      // Add optional fields
+      if (postData.tags) formData.append('tags', postData.tags);
+      if (postData.location) formData.append('location', postData.location);
+      if (postData.meta_description) formData.append('meta_description', postData.meta_description);
+      
+      // Content type specific fields
+      if (contentType === 'story') {
+        formData.append('story_chapters', postData.story_chapters);
       }
       
-      console.log('Creating post with type:', contentType);
-      console.log('Title:', postData.title.trim());
-      console.log('Content:', postData.content.trim());
+      if (contentType === 'workflow') {
+        formData.append('workflow_steps', JSON.stringify(postData.workflow_steps));
+      }
+      
+      // Add media files
+      if (postData.images && postData.images.length > 0) {
+        const firstFile = postData.images[0];
+        if (firstFile.type.startsWith('video/')) {
+          formData.append('video', firstFile.file);
+        } else {
+          formData.append('image', firstFile.file);
+        }
+      }
+      
+      console.log('Creating post with content type:', contentType);
       
       const result = await postsAPI.createPost(formData);
       console.log('Post created successfully:', result);
@@ -206,7 +341,17 @@ const CreatePost = () => {
       
       // Reset form after successful submission
       setTimeout(() => {
-        setPostData({ title: '', content: '', images: [], contentType: 'post' });
+        setPostData({ 
+          title: '', 
+          content: '', 
+          tags: '',
+          location: '',
+          meta_description: '',
+          story_chapters: 1,
+          workflow_steps: [],
+          images: [], 
+          contentType: 'post' 
+        });
         setSuccess(false);
         navigate('/', { replace: true });
       }, 2000);
@@ -214,20 +359,20 @@ const CreatePost = () => {
     } catch (error) {
       console.error('Error creating post:', error);
       
-      let errorMessage = 'Failed to create post. Please try again.';
-      if (error.response?.data?.title) {
-        errorMessage = error.response.data.title[0];
-      } else if (error.response?.data?.content) {
-        errorMessage = error.response.data.content[0];
-      } else if (error.response?.data?.image) {
-        errorMessage = error.response.data.image[0];
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.response?.data?.non_field_errors) {
-        errorMessage = error.response.data.non_field_errors[0];
+      if (error.response?.data) {
+        // Handle Django validation errors
+        const backendErrors = error.response.data;
+        if (typeof backendErrors === 'object') {
+          setValidationErrors(backendErrors);
+          // Create a summary error message
+          const errorMessages = Object.values(backendErrors).flat();
+          setError(errorMessages[0] || 'Please fix the errors below');
+        } else {
+          setError(backendErrors || 'Failed to create post');
+        }
+      } else {
+        setError('Failed to create post. Please try again.');
       }
-      
-      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -238,10 +383,21 @@ const CreatePost = () => {
     postData.images.forEach(image => {
       URL.revokeObjectURL(image.url);
     });
-    navigate(-1); // Go back to previous page
+    navigate(-1);
   };
 
-  const isFormValid = postData.title.trim() || postData.content.trim() || postData.images.length > 0;
+  const isFormValid = () => {
+    const validation = config.validation;
+    
+    // Check required fields
+    if (validation.titleRequired && !postData.title.trim()) return false;
+    if (validation.contentMinLength > 0 && postData.content.length < validation.contentMinLength) return false;
+    if (validation.mediaRequired && postData.images.length === 0) return false;
+    if (validation.workflowStepsRequired && postData.workflow_steps.length < 2) return false;
+    
+    // At least some content is required
+    return postData.title.trim() || postData.content.trim() || postData.images.length > 0 || postData.workflow_steps.length > 0;
+  };
 
   if (success) {
     return (
@@ -279,16 +435,6 @@ const CreatePost = () => {
           </button>
         </div>
 
-        {/* Content Type Indicator */}
-        <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-          <div className="flex items-center text-sm text-gray-600">
-            <span className="mr-2">Content Type:</span>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${config.color} bg-white border`}>
-              {contentType}
-            </span>
-          </div>
-        </div>
-
         {/* Error Alert */}
         {error && (
           <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
@@ -306,18 +452,24 @@ const CreatePost = () => {
               {contentType === 'workflow' ? 'Workflow Name' : 
                contentType === 'story' ? 'Story Title' :
                contentType === 'image' ? 'Image Caption' : 'Title'}
+              {config.validation.titleRequired && <span className="text-red-500 ml-1">*</span>}
             </label>
             <input
               type="text"
               name="title"
               value={postData.title}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                validationErrors.title ? 'border-red-300' : 'border-gray-300'
+              }`}
               placeholder={config.placeholderTitle}
-              maxLength={100}
+              maxLength={200}
             />
+            {validationErrors.title && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.title}</p>
+            )}
             <div className="text-right text-sm text-gray-400 mt-1">
-              {postData.title.length}/100
+              {postData.title.length}/200
             </div>
           </div>
 
@@ -329,20 +481,129 @@ const CreatePost = () => {
                contentType === 'story' ? 'Story Content' :
                contentType === 'image' ? 'Image Description' :
                contentType === 'video' ? 'Video Description' : 'Content'}
+              {config.validation.contentMinLength > 0 && <span className="text-red-500 ml-1">*</span>}
             </label>
             <textarea
               name="content"
               value={postData.content}
               onChange={handleInputChange}
               rows={contentType === 'story' ? 8 : 6}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
+                validationErrors.content ? 'border-red-300' : 'border-gray-300'
+              }`}
               placeholder={config.placeholderContent}
-              maxLength={contentType === 'story' ? 5000 : 2000}
+              maxLength={contentType === 'story' ? 10000 : 2000}
             />
-            <div className="text-right text-sm text-gray-400 mt-1">
-              {postData.content.length}/{contentType === 'story' ? 5000 : 2000}
+            {validationErrors.content && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.content}</p>
+            )}
+            <div className="flex justify-between text-sm text-gray-400 mt-1">
+              <span>
+                {config.validation.contentMinLength > 0 && 
+                  `Minimum ${config.validation.contentMinLength} characters`
+                }
+              </span>
+              <span>{postData.content.length}/{contentType === 'story' ? 10000 : 2000}</span>
             </div>
           </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tags (comma-separated)
+            </label>
+            <input
+              type="text"
+              name="tags"
+              value={postData.tags}
+              onChange={handleInputChange}
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                validationErrors.tags ? 'border-red-300' : 'border-gray-300'
+              }`}
+              placeholder="technology, tutorial, programming"
+              maxLength={500}
+            />
+            {validationErrors.tags && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.tags}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">Maximum 10 tags, each up to 50 characters</p>
+          </div>
+
+          {/* Story Chapters (Story content only) */}
+          {contentType === 'story' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number of Chapters
+              </label>
+              <input
+                type="number"
+                name="story_chapters"
+                value={postData.story_chapters}
+                onChange={handleInputChange}
+                min="1"
+                max="50"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          )}
+
+          {/* Workflow Steps (Workflow content only) */}
+          {contentType === 'workflow' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Workflow Steps <span className="text-red-500">*</span>
+              </label>
+              
+              {postData.workflow_steps.map((step, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4 mb-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-medium text-gray-900">Step {index + 1}</h4>
+                    {postData.workflow_steps.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeWorkflowStep(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Step title"
+                      value={step.title}
+                      onChange={(e) => updateWorkflowStep(index, 'title', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      maxLength={100}
+                    />
+                    <textarea
+                      placeholder="Step description"
+                      value={step.description}
+                      onChange={(e) => updateWorkflowStep(index, 'description', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                      maxLength={500}
+                    />
+                  </div>
+                </div>
+              ))}
+              
+              <button
+                type="button"
+                onClick={addWorkflowStep}
+                className="flex items-center px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Step
+              </button>
+              
+              {validationErrors.workflow_steps && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.workflow_steps}</p>
+              )}
+            </div>
+          )}
 
           {/* File Upload */}
           <div>
@@ -351,11 +612,13 @@ const CreatePost = () => {
                 <>
                   <Video className="inline w-4 h-4 mr-2" />
                   Media Files (Images & Videos, Max {config.maxFiles})
+                  {config.validation.mediaRequired && <span className="text-red-500 ml-1">*</span>}
                 </>
               ) : (
                 <>
                   <Image className="inline w-4 h-4 mr-2" />
                   Images (Max {config.maxFiles})
+                  {config.validation.mediaRequired && <span className="text-red-500 ml-1">*</span>}
                 </>
               )}
             </label>
@@ -365,7 +628,7 @@ const CreatePost = () => {
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 dragActive 
                   ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-300 hover:border-gray-400'
+                  : validationErrors.media ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -393,11 +656,15 @@ const CreatePost = () => {
               </p>
               <p className="text-sm text-gray-400">
                 {contentType === 'video' 
-                  ? 'PNG, JPG, GIF up to 10MB each, MP4, MOV up to 50MB'
-                  : 'PNG, JPG, GIF up to 10MB each'
+                  ? 'Images up to 10MB, Videos up to 100MB'
+                  : 'PNG, JPG, GIF, WebP up to 10MB each'
                 }
               </p>
             </div>
+
+            {validationErrors.media && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.media}</p>
+            )}
 
             {/* File Preview */}
             {postData.images.length > 0 && (
@@ -437,6 +704,39 @@ const CreatePost = () => {
             )}
           </div>
 
+          {/* Optional fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location (optional)
+              </label>
+              <input
+                type="text"
+                name="location"
+                value={postData.location}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="New York, NY"
+                maxLength={200}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Meta Description (optional)
+              </label>
+              <input
+                type="text"
+                name="meta_description"
+                value={postData.meta_description}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Brief description for SEO"
+                maxLength={160}
+              />
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <div className="text-sm text-gray-500">
@@ -458,9 +758,9 @@ const CreatePost = () => {
               </button>
               <button
                 type="submit"
-                disabled={!isFormValid || isSubmitting}
+                disabled={!isFormValid() || isSubmitting}
                 className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                  isFormValid && !isSubmitting
+                  isFormValid() && !isSubmitting
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
