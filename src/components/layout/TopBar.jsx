@@ -25,34 +25,34 @@ const TopBar = ({ onMenuClick }) => {
       {!showMobileSearch ? (
         <>
           <div className="flex items-center space-x-4">
-            <button 
-              onClick={onMenuClick}
-              className="lg:hidden text-gray-600 hover:text-gray-900"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            
-            <div className="lg:hidden flex flex-col items-center space-y-2">
-              {}
+            {/* Logo display with S logo navigation toggle */}
+            <div className="flex flex-col items-center space-y-2">
               <img 
                 src="/5thsocial-logo.png" 
                 alt="5th Social" 
-                className="h-10 w-auto"
+                className="h-10 lg:h-12 w-auto"
               />
-              {}
-              <img 
-                src="/s-logo.png" 
-                alt="S" 
-                className="h-5 w-auto opacity-80"
-              />
+              {/* S Logo - Main Navigation Toggle */}
+              <button 
+                onClick={onMenuClick}
+                className="transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1"
+              >
+                <img 
+                  src="/s-logo.png" 
+                  alt="S" 
+                  className="h-5 lg:h-6 w-auto opacity-80 hover:opacity-100 transition-opacity"
+                />
+              </button>
             </div>
             
-            <div className="hidden sm:block">
+            {/* Desktop search bar */}
+            <div className="hidden sm:block ml-8">
               <SearchBar />
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Mobile search toggle */}
             <button 
               onClick={() => setShowMobileSearch(true)}
               className="sm:hidden text-gray-600 hover:text-gray-900"
@@ -60,7 +60,7 @@ const TopBar = ({ onMenuClick }) => {
               <Search className="w-5 h-5" />
             </button>
             
-            {}
+            {/* User menu */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -75,7 +75,7 @@ const TopBar = ({ onMenuClick }) => {
               </button>
               
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                   <button
                     onClick={handleProfileClick}
                     className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
@@ -96,6 +96,7 @@ const TopBar = ({ onMenuClick }) => {
           </div>
         </>
       ) : (
+        /* Mobile search mode */
         <div className="flex items-center space-x-4 w-full sm:hidden">
           <div className="flex-1">
             <SearchBar />

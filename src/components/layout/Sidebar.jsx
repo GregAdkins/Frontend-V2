@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Compass, Plus, Eye, BarChart3, TrendingUp, FileText, Image, Video, BookOpen, Workflow, Target, ArrowLeft } from 'lucide-react';
+import { Home, Search, Plus, Target, Flag, Eye, User, ArrowLeft } from 'lucide-react';
 import NavItem from '../navigation/NavItem';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -8,23 +8,21 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   
+  // Updated menu items to match the image
   const menuItems = [
-    { id: 'home', label: 'Home', icon: Home, path: '/' },
-    { id: 'search', label: 'Search', icon: Compass, path: '/search' },
     { id: 'create', label: 'Create', icon: Plus, path: '/create', hasSubMenu: true },
+    { id: 'home', label: 'Feed', icon: Home, path: '/' },
+    { id: 'campaign', label: 'Campaign', icon: Flag, path: '/campaign' },
     { id: 'mission', label: 'Mission', icon: Target, path: '/mission' },
-    { id: 'discover', label: 'Discover', icon: Compass, path: '/discover' },
-    { id: 'explore', label: 'Explore & Art', icon: Eye, path: '/explore' },
-    { id: 'data', label: 'Data Environment', icon: BarChart3, path: '/data' },
-    { id: 'trending', label: 'Trending', icon: TrendingUp, path: '/trending' },
+    { id: 'profile', label: 'Profile', icon: User, path: '/profile' }
   ];
 
   const createOptions = [
-    { id: 'post', label: 'Post', icon: FileText, path: '/create?type=post', description: 'Share your thoughts' },
-    { id: 'image', label: 'Image', icon: Image, path: '/create?type=image', description: 'Upload photos' },
-    { id: 'video', label: 'Video', icon: Video, path: '/create?type=video', description: 'Share videos' },
-    { id: 'story', label: 'Story', icon: BookOpen, path: '/create?type=story', description: 'Tell a story' },
-    { id: 'workflow', label: 'Workflow', icon: Workflow, path: '/create?type=workflow', description: 'Design process' },
+    { id: 'post', label: 'Post', icon: Home, path: '/create?type=post', description: 'Share your thoughts' },
+    { id: 'image', label: 'Image', icon: Eye, path: '/create?type=image', description: 'Upload photos' },
+    { id: 'video', label: 'Video', icon: Eye, path: '/create?type=video', description: 'Share videos' },
+    { id: 'story', label: 'Story', icon: Eye, path: '/create?type=story', description: 'Tell a story' },
+    { id: 'workflow', label: 'Workflow', icon: Eye, path: '/create?type=workflow', description: 'Design process' },
   ];
 
   const handleItemClick = (item) => {
@@ -64,31 +62,25 @@ const Sidebar = ({ isOpen, onClose }) => {
       
       {/* Sidebar */}
       <div className={`
-        fixed lg:relative lg:translate-x-0 z-50 lg:z-auto
+        fixed lg:fixed z-50 lg:z-auto
         w-64 lg:w-64 xl:w-72 bg-white border-r border-gray-200 h-screen
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         overflow-hidden
       `}>
-        {/* Logo */}
-        <div className="p-4 lg:p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-          <div className="flex flex-col items-center space-y-3">
-            {/* Main 5thSocial Logo */}
-            <img 
-              src="/5thsocial-logo.png" 
-              alt="5th Social" 
-              className="h-12 lg:h-14 w-auto"
-            />
-            {/* S Logo (replacing plane icon) */}
-            <img 
-              src="/s-logo.png" 
-              alt="S" 
-              className="h-6 w-auto opacity-80"
-            />
-          </div>
+        {/* Logo Section */}
+        <div className="p-4 lg:p-6 border-b border-gray-100 flex flex-col items-center space-y-3">
+          {/* Main 5thSocial Logo */}
+          <img 
+            src="/5thsocial-logo.png" 
+            alt="5th Social" 
+            className="h-12 lg:h-14 w-auto"
+          />
+          
+          {/* Close button for mobile */}
           <button 
             onClick={onClose}
-            className="lg:hidden text-gray-400 hover:text-gray-600"
+            className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-gray-600"
           >
             <div className="w-6 h-6" />
           </button>
@@ -158,12 +150,12 @@ const Sidebar = ({ isOpen, onClose }) => {
         </div>
       </div>
 
-      {/* Desktop: Create Panel Slide-out (only shown on lg+ screens) */}
-      {showCreatePanel && (
+      {/* Desktop: Create Panel Slide-out */}
+      {showCreatePanel && isOpen && (
         <div className={`
           hidden lg:block
-          fixed lg:absolute z-40 lg:z-30
-          left-64 lg:left-64 xl:left-72 top-0 h-screen
+          fixed z-40
+          left-64 xl:left-72 top-0 h-screen
           w-80 bg-white border-r border-gray-200 shadow-lg
           transition-transform duration-300 ease-in-out
           ${showCreatePanel ? 'translate-x-0' : '-translate-x-full'}
