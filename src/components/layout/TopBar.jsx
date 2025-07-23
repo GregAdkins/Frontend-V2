@@ -25,24 +25,21 @@ const TopBar = ({ onMenuClick }) => {
       {!showMobileSearch ? (
         <>
           <div className="flex items-center space-x-4">
-            {/* Logo display with S logo navigation toggle */}
-            <div className="flex flex-col items-center space-y-2">
+            {/* Mobile menu toggle (only visible on mobile) */}
+            <button 
+              onClick={onMenuClick}
+              className="lg:hidden text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+
+            {/* Logo display - always visible */}
+            <div className="flex items-center space-y-2">
               <img 
                 src="/5thsocial-logo.png" 
                 alt="5th Social" 
                 className="h-10 lg:h-12 w-auto"
               />
-              {/* S Logo - Main Navigation Toggle */}
-              <button 
-                onClick={onMenuClick}
-                className="transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1"
-              >
-                <img 
-                  src="/s-logo.png" 
-                  alt="S" 
-                  className="h-5 lg:h-6 w-auto opacity-80 hover:opacity-100 transition-opacity"
-                />
-              </button>
             </div>
             
             {/* Desktop search bar */}

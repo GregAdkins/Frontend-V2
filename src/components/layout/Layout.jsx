@@ -16,14 +16,14 @@ const Layout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar - Hidden by default, shows when sidebarOpen is true */}
+      {/* Sidebar - Always visible on desktop, toggleable on mobile */}
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={handleCloseSidebar}
       />
       
-      {/* Main content area - takes full width when sidebar is closed */}
-      <div className="flex-1 flex flex-col min-w-0 w-full">
+      {/* Main content area - adjusts based on sidebar visibility */}
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-64 xl:ml-72">
         <TopBar 
           onMenuClick={handleMenuToggle}
         />

@@ -60,12 +60,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         />
       )}
       
-      {/* Sidebar */}
+      {/* Sidebar - Always visible on desktop (lg and up), toggleable on mobile */}
       <div className={`
         fixed lg:fixed z-50 lg:z-auto
         w-64 lg:w-64 xl:w-72 bg-white border-r border-gray-200 h-screen
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0
         overflow-hidden
       `}>
         {/* Logo Section */}
@@ -77,7 +78,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             className="h-12 lg:h-14 w-auto"
           />
           
-          {/* Close button for mobile */}
+          {/* Close button for mobile only */}
           <button 
             onClick={onClose}
             className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-gray-600"
@@ -151,7 +152,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       </div>
 
       {/* Desktop: Create Panel Slide-out */}
-      {showCreatePanel && isOpen && (
+      {showCreatePanel && (
         <div className={`
           hidden lg:block
           fixed z-40
